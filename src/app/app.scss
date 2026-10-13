@@ -1,0 +1,354 @@
+
+:host {
+  display: block;
+  min-height: 100%;
+  font-family: 'Roboto', Arial, sans-serif;
+  color: #fff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+
+.login-page {
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 18px 20px;
+  overflow-x: hidden;
+  background: #07172c url('/assets/facultad-bg.jpg') center / cover no-repeat;
+}
+
+.login-page::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  content: '';
+  background:
+    linear-gradient(180deg, rgb(2 12 27 / 58%), rgb(2 12 27 / 75%)),
+    linear-gradient(90deg, rgb(0 26 61 / 35%), transparent 70%);
+}
+
+
+
+.institutional-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin-bottom: 0;
+}
+
+.faculty-logo {
+  display: block;
+  width: min(430px, 85vw);
+  height: auto;
+  max-height: 100px;
+  object-fit: contain;
+}
+
+
+.brand-divider {
+  width: 1px;
+  height: 42px;
+  background: rgb(255 255 255 / 40%);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 530px;
+  padding: 38px 40px 28px;
+  border: 1px solid rgb(255 255 255 / 9%);
+  border-radius: 20px;
+  background: rgb(5 20 42 / 94%);
+  box-shadow: 0 24px 80px rgb(0 0 0 / 35%);
+  backdrop-filter: blur(16px);
+}
+
+.card-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  color: #b5c9ff;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #7299ff;
+  box-shadow: 0 0 12px rgb(114 153 255 / 70%);
+}
+
+.login-card h1 {
+  margin: 0;
+  font-size: clamp(27px, 3vw, 32px);
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.login-description {
+  margin: 14px 0 22px;
+  color: #d0d5df;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+
+.institutional-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  margin-bottom: 24px;
+  padding: 14px;
+  border: 1px solid rgb(255 255 255 / 9%);
+  border-radius: 10px;
+  background: rgb(255 255 255 / 5%);
+}
+
+.institutional-notice svg {
+  width: 19px;
+  height: 19px;
+  flex: 0 0 19px;
+  margin-top: 2px;
+  color: #9bb8ff;
+}
+
+.institutional-notice p {
+  margin: 0;
+  color: #d2d9e5;
+  font-size: 12px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.institutional-notice strong {
+  color: #fff;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 19px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;
+}
+
+.field label {
+  color: #f5f7fb;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.field input {
+  width: 100%;
+  min-width: 0;
+  height: 54px;
+  padding: 0 16px;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 8px;
+  outline: none;
+  background: #202e43;
+  color: #fff;
+  font-size: 14px;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.field input::placeholder {
+  color: #a0aabd;
+}
+
+.field input:focus {
+  border-color: #85a5ff;
+  box-shadow: 0 0 0 3px rgb(105 143 255 / 17%);
+}
+
+.field input[aria-invalid='true'] {
+  border-color: #ff8585;
+}
+
+.password-input {
+  position: relative;
+}
+
+.password-input input {
+  padding-right: 86px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  padding: 8px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #b9cbff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.password-toggle:hover {
+  background: rgb(255 255 255 / 7%);
+}
+
+.submit-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 54px;
+  margin-top: 3px;
+  padding: 14px 18px;
+  border: 1px solid #6d8eff;
+  border-radius: 9px;
+  background: #3755c3;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 160ms ease, transform 160ms ease;
+}
+
+.submit-button:hover:not(:disabled) {
+  background: #4567df;
+}
+
+.submit-button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.submit-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.submit-button svg {
+  width: 19px;
+  height: 19px;
+}
+
+.submit-button:focus-visible,
+.password-toggle:focus-visible {
+  outline: 3px solid #a9c3ff;
+  outline-offset: 3px;
+}
+
+.field-error {
+  margin: 0;
+  color: #ffb4b4;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.form-message {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid rgb(169 195 255 / 25%);
+  border-radius: 8px;
+  background: rgb(169 195 255 / 8%);
+  color: #dce6ff;
+  font-size: 12px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.card-separator {
+  height: 1px;
+  margin: 27px 0 18px;
+  background: rgb(255 255 255 / 15%);
+}
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #d1d9e8;
+  font-size: 12px;
+}
+
+.card-footer svg {
+  width: 19px;
+  height: 19px;
+  flex: 0 0 19px;
+  color: #9bb8ff;
+}
+
+.copyright {
+  margin: 17px 0 0;
+  color: #8998ae;
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.background-caption {
+  position: absolute;
+  right: 22px;
+  bottom: 18px;
+  margin: 0;
+  color: rgb(255 255 255 / 65%);
+  font-size: 9px;
+  letter-spacing: 1.6px;
+}
+
+@media (max-width: 600px) {
+  .login-page {
+    justify-content: center;
+    gap: 24px;
+    padding: 28px 14px 48px;
+  }
+
+  .institutional-header {
+    gap: 15px;
+  }
+
+  .uaq-logo,
+  .faculty-logo {
+    max-width: 42%;
+    height: 43px;
+  }
+
+  .brand-divider {
+    height: 32px;
+  }
+
+  .login-card {
+    padding: 28px 22px 23px;
+    border-radius: 15px;
+  }
+
+  .login-description {
+    font-size: 13px;
+  }
+
+  .background-caption {
+    right: 0;
+    bottom: 12px;
+    left: 0;
+    text-align: center;
+    font-size: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+  }
+}
