@@ -1,0 +1,1270 @@
+<div class="institutional-app">
+  <!-- Notificación Flotante Discreta -->
+  @if (actionFeedback) {
+    <div class="feedback-toast" role="status">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>{{ actionFeedback }}</span>
+    </div>
+  }
+
+  <!-- ==================== BARRA LATERAL INSTITUCIONAL ==================== -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="brand-badge">UAQ</div>
+      <div class="brand-text">
+        <span class="brand-title">INFOUAQ</span>
+        <span class="brand-sub">Repositorio · FIF</span>
+      </div>
+    </div>
+
+    <!-- Navegación según el Perfil Activo -->
+    <nav class="sidebar-nav" aria-label="Navegación principal">
+      <span class="nav-heading">PLATAFORMA</span>
+
+      <button
+        class="nav-link"
+        [class.active]="activeView === 'Inicio'"
+        (click)="setView('Inicio')"
+      >
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" stroke-width="1.8"/>
+        </svg>
+        <span>Inicio</span>
+      </button>
+
+      <button
+        class="nav-link"
+        [class.active]="activeView === 'Materias'"
+        (click)="setView('Materias')"
+      >
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" stroke="currentColor" stroke-width="1.8"/>
+        </svg>
+        <span>Catálogo de materias</span>
+      </button>
+
+      <button
+        class="nav-link"
+        [class.active]="activeView === 'Repositorio'"
+        (click)="setView('Repositorio')"
+      >
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="1.8"/>
+          <polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="1.8"/>
+        </svg>
+        <span>Repositorio de documentos</span>
+      </button>
+
+      <!-- SECCIÓN DOCENTE (Solo visible para Profesores y Administradores) -->
+      @if (currentRole === 'Profesor' || currentRole === 'Administrador') {
+        <span class="nav-heading">GESTIÓN DOCENTE</span>
+
+        <button
+          class="nav-link"
+          [class.active]="activeView === 'Panel Docente'"
+          (click)="setView('Panel Docente')"
+        >
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.8"/>
+            <circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.8"/>
+          </svg>
+          <span>Panel docente</span>
+        </button>
+      }
+
+      <!-- SECCIÓN ADMINISTRADOR (Solo visible para Administradores) -->
+      @if (currentRole === 'Administrador') {
+        <span class="nav-heading">ADMINISTRACIÓN</span>
+
+        <button
+          class="nav-link"
+          [class.active]="activeView === 'Panel Administrador'"
+          (click)="setView('Panel Administrador')"
+        >
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" stroke-width="1.8"/>
+          </svg>
+          <span>Panel administrador</span>
+        </button>
+      }
+
+      <span class="nav-heading">USUARIO</span>
+
+      <button
+        class="nav-link"
+        [class.active]="activeView === 'Mi Perfil'"
+        (click)="setView('Mi Perfil')"
+      >
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.8"/>
+        </svg>
+        <span>Mi perfil institucional</span>
+      </button>
+
+      <button class="nav-link logout-link" (click)="logoutRequested()">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" stroke-width="1.8"/>
+          <polyline points="16 17 21 12 16 7" stroke="currentColor" stroke-width="1.8"/>
+          <line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" stroke-width="1.8"/>
+        </svg>
+        <span>Cerrar sesión</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <strong>UAQ</strong>
+      <span>Facultad de Informática</span>
+      <small>Universidad Autónoma de Querétaro</small>
+    </div>
+  </aside>
+
+  <!-- ==================== CONTENIDO PRINCIPAL ==================== -->
+  <main class="main-viewport">
+    <!-- Topbar Institucional Sobria -->
+    <header class="topbar">
+      <!-- Selector de Rol para Prototipado y Auditoría -->
+      <div class="role-switcher" aria-label="Simular rol de usuario">
+        <span class="switcher-label">Perfil de prueba:</span>
+        <div class="switcher-options">
+          <button
+            type="button"
+            class="switch-btn"
+            [class.active]="currentRole === 'Estudiante'"
+            (click)="switchRole('Estudiante')"
+          >
+            Estudiante
+          </button>
+          <button
+            type="button"
+            class="switch-btn"
+            [class.active]="currentRole === 'Profesor'"
+            (click)="switchRole('Profesor')"
+          >
+            Profesor
+          </button>
+          <button
+            type="button"
+            class="switch-btn"
+            [class.active]="currentRole === 'Administrador'"
+            (click)="switchRole('Administrador')"
+          >
+            Administrador
+          </button>
+        </div>
+      </div>
+
+      <!-- Buscador superior -->
+      <div class="topbar-search">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.8"/>
+          <path d="m21 21-4.35-4.35" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        <input
+          type="search"
+          placeholder="Buscar materias o recursos..."
+          [(ngModel)]="searchTerm"
+          (keydown.enter)="searchFromHero($event)"
+        />
+      </div>
+
+      <!-- Datos de Usuario -->
+      <div class="topbar-user" (click)="setView('Mi Perfil')">
+        <div class="user-avatar">{{ currentUser.initials }}</div>
+        <div class="user-info">
+          <span class="user-name">{{ currentUser.name }}</span>
+          <span class="role-tag" [class.role-docente]="currentRole === 'Profesor'" [class.role-admin]="currentRole === 'Administrador'">
+            {{ currentUser.role }}
+          </span>
+        </div>
+      </div>
+    </header>
+
+    <div class="content-canvas">
+      <!-- ======================================================== -->
+      <!-- PANTALLA: DETALLE DE DOCUMENTO CON COMENTARIOS INTEGRADOS -->
+      <!-- ======================================================== -->
+      @if (activeView === 'Detalle Documento' && selectedDocument) {
+        <section class="document-detail-screen">
+          <!-- Botón de Retorno -->
+          <button class="link-back" (click)="backFromDocumentDetail()">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="m15 18-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>Volver a la vista anterior</span>
+          </button>
+
+          <!-- Encabezado Editorial del Recurso -->
+          <header class="doc-header">
+            <div class="doc-header-main">
+              <div class="doc-tagline">
+                <span class="format-badge" [class]="selectedDocument.color">{{ selectedDocument.type }}</span>
+                <span class="subject-ref">{{ selectedDocument.subjectCode }} · {{ selectedDocument.subject }}</span>
+                <span class="bullet-divider">·</span>
+                <span class="category-ref">{{ selectedDocument.category }}</span>
+              </div>
+              <h1 class="doc-title">{{ selectedDocument.name }}</h1>
+              <div class="doc-meta-strip">
+                <span><strong>Profesor responsable:</strong> {{ selectedDocument.author }}</span>
+                <span><strong>Unidad temática:</strong> {{ selectedDocument.unit }}</span>
+                <span><strong>Tamaño:</strong> {{ selectedDocument.size }}</span>
+                <span><strong>Fecha de publicación:</strong> {{ selectedDocument.date }}</span>
+                <span><strong>Consultas:</strong> {{ selectedDocument.downloads }} descargas</span>
+              </div>
+            </div>
+
+            <div class="doc-header-actions">
+              <button class="btn-primary" (click)="downloadDocument(selectedDocument)">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="1.8"/>
+                  <polyline points="7 10 12 15 17 10" stroke="currentColor" stroke-width="1.8"/>
+                  <line x1="12" y1="15" x2="12" y2="3" stroke="currentColor" stroke-width="1.8"/>
+                </svg>
+                <span>Descargar archivo</span>
+              </button>
+
+              @if (currentRole === 'Profesor' || currentRole === 'Administrador') {
+                <button class="btn-secondary" (click)="openUploadModal()">
+                  <span>Sustituir versión</span>
+                </button>
+              }
+            </div>
+          </header>
+
+          <!-- Área del Visor Institucional (Previsualización de Documento) -->
+          <div class="document-viewer-container">
+            <div class="viewer-toolbar">
+              <div class="viewer-tools-left">
+                <span>Vista preliminar del acervo digital</span>
+                <small>· Documento institucional certificado</small>
+              </div>
+              <div class="viewer-tools-right">
+                <span>Página 1 de 1</span>
+              </div>
+            </div>
+
+            <div class="viewer-canvas">
+              <div class="page-sheet">
+                <div class="sheet-top">
+                  <div>
+                    <strong>UNIVERSIDAD AUTÓNOMA DE QUERÉTARO</strong>
+                    <span>FACULTAD DE INFORMÁTICA · REPOSITORIO INFOUAQ</span>
+                  </div>
+                  <span class="sheet-code">{{ selectedDocument.subjectCode }}</span>
+                </div>
+
+                <div class="sheet-title-block">
+                  <h2>{{ selectedDocument.name }}</h2>
+                  <p class="sheet-summary">{{ selectedDocument.description }}</p>
+                </div>
+
+                <div class="sheet-body-preview">
+                  <p>
+                    <strong>Resumen pedagógico:</strong> Este material contiene las especificaciones conceptuales,
+                    ejemplos resueltos y lineamientos correspondientes a la asignatura de {{ selectedDocument.subject }},
+                    impartida en los programas académicos de la Facultad de Informática.
+                  </p>
+                  <p class="sheet-note">
+                    Para visualizar la versión completa con esquemas de alta resolución, ejercicios prácticos y códigos fuente,
+                    utiliza el botón de descarga oficial ubicado en el encabezado.
+                  </p>
+                </div>
+
+                <div class="sheet-footer-line">
+                  <span>INFOUAQ · Uso estrictamente académico para la comunidad universitaria</span>
+                  <span>{{ selectedDocument.date }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ======================================================== -->
+          <!-- SECCIÓN DE COMENTARIOS ACADÉMICOS INTEGRADA EN EL ARCHIVO -->
+          <!-- ======================================================== -->
+          <section class="file-comments-section" id="comentarios">
+            <div class="comments-header">
+              <div>
+                <h2>Comentarios y preguntas académicas</h2>
+                <p class="comments-lead">
+                  Espacio asincrónico para consultas sobre este documento. Las respuestas son visibles permanentemente para la comunidad de la materia.
+                </p>
+              </div>
+              <span class="comments-counter">
+                {{ selectedDocument.comments.length }} hilos de discusión
+              </span>
+            </div>
+
+            <!-- Campo para Nuevo Comentario -->
+            <div class="comment-composer">
+              <div class="composer-author">
+                <span class="avatar-sm">{{ currentUser.initials }}</span>
+                <strong>{{ currentUser.name }}</strong>
+                <span class="role-chip" [class.role-docente]="currentRole === 'Profesor'">
+                  {{ currentUser.role }}
+                </span>
+              </div>
+
+              <textarea
+                class="composer-textarea"
+                rows="3"
+                placeholder="Escribe una pregunta o aporte sobre el contenido de este documento..."
+                [(ngModel)]="newCommentText"
+              ></textarea>
+
+              <div class="composer-actions">
+                <span class="composer-hint">Tus dudas ayudan a enriquecer el aprendizaje de tus compañeros.</span>
+                <button
+                  type="button"
+                  class="btn-primary"
+                  [disabled]="!newCommentText.trim()"
+                  (click)="submitNewComment()"
+                >
+                  Publicar comentario
+                </button>
+              </div>
+            </div>
+
+            <!-- Lista de Comentarios e Hilos -->
+            <div class="comments-thread-list">
+              @for (comment of selectedDocument.comments; track comment.id) {
+                <article class="comment-entry" [class.comment-deleted]="comment.isDeleted">
+                  <div class="comment-main-row">
+                    <div class="comment-avatar">{{ comment.authorInitials }}</div>
+
+                    <div class="comment-content-block">
+                      <div class="comment-meta">
+                        <strong class="comment-author-name">{{ comment.authorName }}</strong>
+                        <span class="role-badge" [class.badge-docente]="comment.authorRole === 'Profesor'" [class.badge-admin]="comment.authorRole === 'Administrador'">
+                          {{ comment.authorRole }}
+                        </span>
+                        <span class="comment-time">{{ comment.timestamp }}</span>
+                        @if (comment.isEdited) {
+                          <span class="edited-tag">(editado)</span>
+                        }
+                      </div>
+
+                      <!-- Alerta si fue reportado (visible para Administrador) -->
+                      @if (comment.isReported && currentRole === 'Administrador') {
+                        <div class="moderation-alert">
+                          <span>Reportado por: {{ comment.reportReason ?? 'Infracción normativa' }}</span>
+                          <button class="btn-text-sm" (click)="dismissReport(comment)">Descartar reporte</button>
+                          <button class="btn-text-danger" (click)="moderateHideComment(comment)">Ocultar comentario</button>
+                        </div>
+                      }
+
+                      <!-- Modo Edición / Modo Lectura -->
+                      @if (editingCommentId === comment.id) {
+                        <div class="inline-edit-box">
+                          <textarea [(ngModel)]="editCommentText" rows="2" class="composer-textarea"></textarea>
+                          <div class="inline-actions">
+                            <button class="btn-secondary-sm" (click)="cancelEdit()">Cancelar</button>
+                            <button class="btn-primary-sm" (click)="saveEdit(comment)">Guardar cambios</button>
+                          </div>
+                        </div>
+                      } @else {
+                        <p class="comment-body">{{ comment.content }}</p>
+                      }
+
+                      <!-- Barra de Acciones del Comentario -->
+                      @if (!comment.isDeleted) {
+                        <div class="comment-action-bar">
+                          <button
+                            type="button"
+                            class="action-btn"
+                            [class.liked]="comment.userLiked"
+                            (click)="toggleLike(comment)"
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                              <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span>{{ comment.likes }}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            class="action-btn"
+                            (click)="startReply(comment.id)"
+                          >
+                            <span>Responder</span>
+                          </button>
+
+                          <!-- Opciones del autor -->
+                          @if (comment.authorExpediente === currentUser.expediente) {
+                            <button type="button" class="action-btn" (click)="startEdit(comment)">
+                              Editar
+                            </button>
+                            <button type="button" class="action-btn btn-danger" (click)="deleteComment(comment)">
+                              Eliminar
+                            </button>
+                          } @else {
+                            <button type="button" class="action-btn" (click)="openReportModal(comment)">
+                              Reportar
+                            </button>
+                          }
+
+                          <!-- Control de Administrador -->
+                          @if (currentRole === 'Administrador' && !comment.isReported) {
+                            <button type="button" class="action-btn btn-danger" (click)="moderateHideComment(comment)">
+                              Moderar
+                            </button>
+                          }
+                        </div>
+                      }
+
+                      <!-- Formulario de Respuesta en Hilo -->
+                      @if (replyingCommentId === comment.id) {
+                        <div class="nested-reply-composer">
+                          <textarea
+                            class="composer-textarea"
+                            rows="2"
+                            placeholder="Escribe tu respuesta para {{ comment.authorName }}..."
+                            [(ngModel)]="replyText"
+                          ></textarea>
+                          <div class="inline-actions">
+                            <button class="btn-secondary-sm" (click)="cancelReply()">Cancelar</button>
+                            <button
+                              class="btn-primary-sm"
+                              [disabled]="!replyText.trim()"
+                              (click)="submitReply(comment)"
+                            >
+                              Enviar respuesta
+                            </button>
+                          </div>
+                        </div>
+                      }
+
+                      <!-- Hilos de Respuestas Anidadas (Árbol Conector) -->
+                      @if (comment.replies && comment.replies.length > 0) {
+                        <div class="replies-tree">
+                          @for (reply of comment.replies; track reply.id) {
+                            <div class="reply-entry">
+                              <div class="reply-avatar">{{ reply.authorInitials }}</div>
+                              <div class="reply-content">
+                                <div class="comment-meta">
+                                  <strong>{{ reply.authorName }}</strong>
+                                  <span class="role-badge" [class.badge-docente]="reply.authorRole === 'Profesor'">
+                                    {{ reply.authorRole }}
+                                  </span>
+                                  <span class="comment-time">{{ reply.timestamp }}</span>
+                                </div>
+                                <p class="comment-body">{{ reply.content }}</p>
+
+                                <div class="comment-action-bar">
+                                  <button
+                                    type="button"
+                                    class="action-btn"
+                                    [class.liked]="reply.userLiked"
+                                    (click)="toggleLike(reply)"
+                                  >
+                                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                      <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" stroke="currentColor" stroke-width="1.8"/>
+                                    </svg>
+                                    <span>{{ reply.likes }}</span>
+                                  </button>
+
+                                  @if (reply.authorExpediente === currentUser.expediente) {
+                                    <button type="button" class="action-btn btn-danger" (click)="deleteComment(reply, comment)">
+                                      Eliminar
+                                    </button>
+                                  } @else {
+                                    <button type="button" class="action-btn" (click)="openReportModal(reply)">
+                                      Reportar
+                                    </button>
+                                  }
+                                </div>
+                              </div>
+                            </div>
+                          }
+                        </div>
+                      }
+                    </div>
+                  </div>
+                </article>
+              } @empty {
+                <div class="comments-empty">
+                  <p>Todavía no hay comentarios en este archivo. Sé el primero en publicar una duda o aporte para el profesor y tus compañeros.</p>
+                </div>
+              }
+            </div>
+          </section>
+        </section>
+      }
+
+      <!-- ======================================================== -->
+      <!-- PANTALLA: CATÁLOGO DE MATERIAS Y DETALLE DE ASIGNATURA   -->
+      <!-- ======================================================== -->
+      @else if (activeView === 'Materias') {
+        @if (!selectedSubject) {
+          <section class="section-layout">
+            <div class="page-title-row">
+              <div>
+                <h2>Catálogo de asignaturas</h2>
+                <p class="text-secondary">Consulta tus materias y los acervos oficiales organizados por la Facultad de Informática.</p>
+              </div>
+              <span class="count-tag">{{ filteredSubjects.length }} asignaturas</span>
+            </div>
+
+            <!-- Filtros Simples y Limpios (Sin Cards) -->
+            <div class="filter-bar">
+              <input
+                type="search"
+                class="filter-input-search"
+                placeholder="Buscar por materia, código o profesor..."
+                [(ngModel)]="subjectSearch"
+              />
+              <select class="filter-select" [(ngModel)]="selectedSemester">
+                <option value="Todos">Todos los semestres</option>
+                <option value="3">3° Semestre</option>
+                <option value="4">4° Semestre</option>
+              </select>
+              <select class="filter-select" [(ngModel)]="selectedStatus">
+                <option value="Todas">Todos los estados</option>
+                <option value="En progreso">En progreso</option>
+                <option value="Completadas">Completadas</option>
+              </select>
+            </div>
+
+            <!-- Tabla Institucional de Asignaturas -->
+            <div class="table-frame">
+              <table class="academic-table">
+                <thead>
+                  <tr>
+                    <th>Código</th>
+                    <th>Asignatura</th>
+                    <th>Profesor titular</th>
+                    <th>Semestre</th>
+                    <th>Progreso</th>
+                    <th>Estado</th>
+                    <th class="text-right">Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (sub of filteredSubjects; track sub.code) {
+                    <tr>
+                      <td><span class="code-pill">{{ sub.code }}</span></td>
+                      <td><strong>{{ sub.name }}</strong></td>
+                      <td>{{ sub.teacher }}</td>
+                      <td>{{ sub.semester }}° Semestre</td>
+                      <td>
+                        <div class="progress-indicator">
+                          <div class="progress-track">
+                            <div class="progress-fill" [style.width.%]="sub.progress"></div>
+                          </div>
+                          <span>{{ sub.progress }}%</span>
+                        </div>
+                      </td>
+                      <td>
+                        <span class="status-indicator" [class.completed]="sub.progress === 100">
+                          {{ sub.progress === 100 ? 'Completada' : 'En progreso' }}
+                        </span>
+                      </td>
+                      <td class="text-right">
+                        <button class="btn-table-action" (click)="openSubject(sub)">
+                          Ver programa y documentos →
+                        </button>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </section>
+        } @else {
+          <!-- DETALLE DE MATERIA (Organización por Unidades) -->
+          <section class="section-layout">
+            <button class="link-back" (click)="backToSubjects()">
+              ← Volver al catálogo de materias
+            </button>
+
+            <header class="subject-overview-strip">
+              <div>
+                <span class="code-pill">{{ selectedSubject.code }}</span>
+                <h2>{{ selectedSubject.name }}</h2>
+                <p class="text-secondary">
+                  <strong>Profesor Titular:</strong> {{ selectedSubject.teacher }} · {{ selectedSubject.semester }}° Semestre
+                </p>
+              </div>
+
+              @if (currentRole === 'Profesor' || currentRole === 'Administrador') {
+                <button class="btn-primary" (click)="openUploadModal()">
+                  + Agregar material a la materia
+                </button>
+              }
+            </header>
+
+            <div class="units-list-container">
+              <h3>Contenidos y materiales por unidad temática</h3>
+
+              @for (unit of selectedSubject.units; track unit.name) {
+                <div class="unit-section">
+                  <div class="unit-title-bar">
+                    <h4>{{ unit.name }}</h4>
+                    <p>{{ unit.description }}</p>
+                  </div>
+
+                  <div class="unit-materials-table">
+                    @for (doc of getDocumentsForUnit(unit.materialIds); track doc.id) {
+                      <div class="material-item-row" (click)="openDocumentDetail(doc)">
+                        <div class="mat-left">
+                          <span class="format-badge" [class]="doc.color">{{ doc.type }}</span>
+                          <div>
+                            <strong>{{ doc.name }}</strong>
+                            <div class="mat-meta">
+                              <span>{{ doc.category }}</span>
+                              <span>·</span>
+                              <span>{{ doc.size }}</span>
+                              <span>·</span>
+                              <span>{{ doc.comments.length }} comentarios</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="mat-right">
+                          <button class="btn-link" (click)="$event.stopPropagation(); openDocumentDetail(doc)">
+                            Abrir visor y comentarios ↗
+                          </button>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </section>
+        }
+      }
+
+      <!-- ======================================================== -->
+      <!-- PANTALLA: REPOSITORIO GENERAL DE DOCUMENTOS              -->
+      <!-- ======================================================== -->
+      @else if (activeView === 'Repositorio') {
+        <section class="section-layout">
+          <div class="page-title-row">
+            <div>
+              <h2>Repositorio de documentos académicos</h2>
+              <p class="text-secondary">Consulta y descarga guías, apuntes y prácticas oficiales de la facultad.</p>
+            </div>
+
+            @if (currentRole === 'Profesor' || currentRole === 'Administrador') {
+              <button class="btn-primary" (click)="openUploadModal()">
+                + Subir nuevo documento
+              </button>
+            }
+          </div>
+
+          <!-- Filtros de Repositorio -->
+          <div class="filter-bar">
+            <input
+              type="search"
+              class="filter-input-search"
+              placeholder="Buscar por nombre, tema o profesor..."
+              [(ngModel)]="repoSearch"
+            />
+            <select class="filter-select" [(ngModel)]="selectedRepoSubject">
+              <option value="Todas">Todas las materias</option>
+              <option value="Programación Web">Programación Web</option>
+              <option value="Base de Datos">Base de Datos</option>
+              <option value="Diseño de Interfaces">Diseño de Interfaces</option>
+              <option value="Estructuras de Datos">Estructuras de Datos</option>
+            </select>
+            <select class="filter-select" [(ngModel)]="selectedRepoType">
+              <option value="Todos">Todos los formatos</option>
+              <option value="PDF">PDF</option>
+              <option value="PPTX">PPTX</option>
+              <option value="DOCX">DOCX</option>
+            </select>
+          </div>
+
+          <!-- Tabla de Repositorio con Enlace Directo a Detalle -->
+          <div class="table-frame">
+            <table class="academic-table">
+              <thead>
+                <tr>
+                  <th>Formato</th>
+                  <th>Título del recurso</th>
+                  <th>Asignatura</th>
+                  <th>Profesor</th>
+                  <th>Tamaño</th>
+                  <th>Discusión</th>
+                  <th class="text-right">Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (doc of filteredRepoDocuments; track doc.id) {
+                  <tr (click)="openDocumentDetail(doc)" class="clickable-row">
+                    <td><span class="format-badge" [class]="doc.color">{{ doc.type }}</span></td>
+                    <td>
+                      <strong>{{ doc.name }}</strong>
+                      <small class="text-secondary block-sm">{{ doc.category }}</small>
+                    </td>
+                    <td>{{ doc.subject }}</td>
+                    <td>{{ doc.author }}</td>
+                    <td>{{ doc.size }}</td>
+                    <td>
+                      <span class="comments-badge">
+                        {{ doc.comments.length }} comentarios
+                      </span>
+                    </td>
+                    <td class="text-right" (click)="$event.stopPropagation()">
+                      <button class="btn-table-action" (click)="openDocumentDetail(doc)">
+                        Abrir y comentar →
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      }
+
+      <!-- ======================================================== -->
+      <!-- PANTALLA: PANEL DOCENTE (Para Profesores y Administrador)-->
+      <!-- ======================================================== -->
+      @else if (activeView === 'Panel Docente' && currentRole !== 'Estudiante') {
+        <section class="section-layout">
+          <div class="page-title-row">
+            <div>
+              <h2>Panel docente</h2>
+              <p class="text-secondary">Gestión de recursos académicos y atención a dudas de los estudiantes.</p>
+            </div>
+            <button class="btn-primary" (click)="openUploadModal()">
+              + Subir material oficial
+            </button>
+          </div>
+
+          <!-- Franja Editorial de Métricas (Sin tarjetas redondeadas) -->
+          <div class="stats-strip">
+            <div class="stat-unit">
+              <span class="stat-unit-label">Materias a cargo</span>
+              <strong class="stat-unit-number">2</strong>
+              <small>Programación Web · Redes</small>
+            </div>
+            <div class="stat-unit">
+              <span class="stat-unit-label">Documentos en repositorio</span>
+              <strong class="stat-unit-number">{{ documents.length }}</strong>
+              <small>Recursos oficiales vigentes</small>
+            </div>
+            <div class="stat-unit">
+              <span class="stat-unit-label">Preguntas de alumnos</span>
+              <strong class="stat-unit-number">5</strong>
+              <small>En espera de respuesta</small>
+            </div>
+          </div>
+
+          <!-- Tabla de Materiales Gestionados -->
+          <div class="section-subblock">
+            <h3>Materiales bajo tu gestión académica</h3>
+            <div class="table-frame">
+              <table class="academic-table">
+                <thead>
+                  <tr>
+                    <th>Recurso</th>
+                    <th>Materia</th>
+                    <th>Unidad</th>
+                    <th>Consultas</th>
+                    <th>Comentarios</th>
+                    <th class="text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (doc of documents; track doc.id) {
+                    <tr>
+                      <td>
+                        <strong>{{ doc.name }}</strong>
+                      </td>
+                      <td>{{ doc.subject }}</td>
+                      <td>{{ doc.unit }}</td>
+                      <td>{{ doc.downloads }} descargas</td>
+                      <td>{{ doc.comments.length }} preguntas</td>
+                      <td class="text-right">
+                        <button class="btn-table-action" (click)="openDocumentDetail(doc)">
+                          Ver dudas
+                        </button>
+                        <button class="btn-text-danger" (click)="deleteDocumentFromRepo(doc)">
+                          Eliminar
+                        </button>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      }
+
+      <!-- ======================================================== -->
+      <!-- PANTALLA: PANEL ADMINISTRADOR (Solo Administradores)     -->
+      <!-- ======================================================== -->
+      @else if (activeView === 'Panel Administrador' && currentRole === 'Administrador') {
+        <section class="section-layout">
+          <div class="page-title-row">
+            <div>
+              <h2>Panel de administración institucional</h2>
+              <p class="text-secondary">Supervisión del acervo, control de acceso de usuarios y moderación de contenido.</p>
+            </div>
+          </div>
+
+          <!-- Franja Editorial de Métricas del Sistema -->
+          <div class="stats-strip">
+            <div class="stat-unit">
+              <span class="stat-unit-label">Usuarios totales</span>
+              <strong class="stat-unit-number">{{ adminMetrics.totalUsers }}</strong>
+              <small>{{ adminMetrics.activeStudents }} estudiantes · {{ adminMetrics.activeTeachers }} docentes</small>
+            </div>
+            <div class="stat-unit">
+              <span class="stat-unit-label">Documentos en acervo</span>
+              <strong class="stat-unit-number">{{ adminMetrics.totalDocuments }}</strong>
+              <small>Facultad de Informática</small>
+            </div>
+            <div class="stat-unit">
+              <span class="stat-unit-label">Almacenamiento utilizado</span>
+              <strong class="stat-unit-number">{{ adminMetrics.storageUsed }}</strong>
+              <small>De {{ adminMetrics.storageMax }} asignados</small>
+            </div>
+          </div>
+
+          <!-- Moderación de Comentarios Reportados -->
+          <div class="section-subblock">
+            <h3>Comentarios reportados por la comunidad (Moderación)</h3>
+            @if (reportedCommentsList.length > 0) {
+              <div class="table-frame">
+                <table class="academic-table">
+                  <thead>
+                    <tr>
+                      <th>Documento</th>
+                      <th>Autor</th>
+                      <th>Comentario denunciado</th>
+                      <th>Motivo del reporte</th>
+                      <th class="text-right">Acción de moderación</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (item of reportedCommentsList; track item.comment.id) {
+                      <tr>
+                        <td><strong>{{ item.docName }}</strong></td>
+                        <td>{{ item.comment.authorName }} ({{ item.comment.authorRole }})</td>
+                        <td class="text-italic">«{{ item.comment.content }}»</td>
+                        <td><span class="alert-chip">{{ item.comment.reportReason }}</span></td>
+                        <td class="text-right">
+                          <button class="btn-table-action" (click)="dismissReport(item.comment)">
+                            Descartar
+                          </button>
+                          <button class="btn-text-danger" (click)="moderateHideComment(item.comment)">
+                            Retirar comentario
+                          </button>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            } @else {
+              <div class="clean-empty-row">
+                <p>No hay comentarios reportados pendientes de moderación.</p>
+              </div>
+            }
+          </div>
+
+          <!-- Gestión de Usuarios y Roles -->
+          <div class="section-subblock">
+            <h3>Gestión de usuarios institucionales UAQ</h3>
+            <div class="table-frame">
+              <table class="academic-table">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Expediente</th>
+                    <th>Correo institucional</th>
+                    <th>Rol asignado</th>
+                    <th>Estado</th>
+                    <th class="text-right">Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (user of institutionalUsers; track user.id) {
+                    <tr>
+                      <td><strong>{{ user.name }}</strong></td>
+                      <td>{{ user.expediente }}</td>
+                      <td>{{ user.email }}</td>
+                      <td>
+                        <span class="role-badge" [class.badge-docente]="user.role === 'Profesor'" [class.badge-admin]="user.role === 'Administrador'">
+                          {{ user.role }}
+                        </span>
+                      </td>
+                      <td>
+                        <span class="status-indicator" [class.completed]="user.status === 'Activo'">
+                          {{ user.status }}
+                        </span>
+                      </td>
+                      <td class="text-right">
+                        <button class="btn-table-action" (click)="toggleUserStatus(user)">
+                          {{ user.status === 'Activo' ? 'Suspender acceso' : 'Reactivar' }}
+                        </button>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      }
+
+      <!-- ======================================================== -->
+      <!-- PANTALLA: PERFIL DE USUARIO INSTITUCIONAL                -->
+      <!-- ======================================================== -->
+      @else if (activeView === 'Mi Perfil') {
+        <section class="section-layout">
+          <div class="page-title-row">
+            <div>
+              <h2>Perfil institucional</h2>
+              <p class="text-secondary">Información registrada en el padrón de la Universidad Autónoma de Querétaro.</p>
+            </div>
+          </div>
+
+          <div class="profile-editorial-grid">
+            <div class="profile-id-column">
+              <div class="user-avatar-lg">{{ currentUser.initials }}</div>
+              <h3>{{ currentUser.name }}</h3>
+              <span class="role-tag" [class.role-docente]="currentRole === 'Profesor'" [class.role-admin]="currentRole === 'Administrador'">
+                {{ currentUser.role }}
+              </span>
+              <p class="profile-campus">{{ currentUser.campus }}</p>
+            </div>
+
+            <div class="profile-data-column">
+              <div class="data-table-vertical">
+                <div class="data-row">
+                  <span class="data-label">Número de expediente:</span>
+                  <span class="data-val"><strong>{{ currentUser.expediente }}</strong></span>
+                </div>
+                <div class="data-row">
+                  <span class="data-label">Correo institucional:</span>
+                  <span class="data-val">{{ currentUser.email }}</span>
+                </div>
+                <div class="data-row">
+                  <span class="data-label">Programa / Adscripción:</span>
+                  <span class="data-val">{{ currentUser.carreraOrDept }}</span>
+                </div>
+                <div class="data-row">
+                  <span class="data-label">Nivel / Cargo:</span>
+                  <span class="data-val">{{ currentUser.semestreOrCargo }}</span>
+                </div>
+              </div>
+
+              <div class="security-note">
+                <strong>Autenticación centralizada UAQ:</strong>
+                <p>Las contraseñas y permisos están gestionados por los servicios de identidad de la universidad.</p>
+                <button class="btn-secondary-sm" (click)="showFeedback('Accede al portal de autoservicio de la UAQ para cambiar tu contraseña.')">
+                  Gestionar credenciales institucionales
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      }
+
+      <!-- ======================================================== -->
+      <!-- PANTALLA: INICIO / DASHBOARD PRINCIPAL                   -->
+      <!-- ======================================================== -->
+      @else {
+        <!-- Banner Hero Sobrio y Universitario -->
+        <section class="hero-strip">
+          <div class="hero-text-side">
+            <span class="hero-kicker">UNIVERSIDAD AUTÓNOMA DE QUERÉTARO · FACULTAD DE INFORMÁTICA</span>
+            <h1>Bienvenido(a), {{ currentUser.name }}</h1>
+            <p>
+              Consulta tus asignaturas, explora el acervo académico y participa en las conversaciones de cada material de estudio.
+            </p>
+
+            <form class="search-hero-box" (submit)="searchFromHero($event)">
+              <input
+                type="search"
+                placeholder="Buscar por materia, tema o documento..."
+                [(ngModel)]="searchTerm"
+                name="heroSearch"
+              />
+              <button type="submit">Buscar en el acervo</button>
+            </form>
+          </div>
+
+          <div class="hero-motto-side">
+            <span class="motto-letters">EDUCO EN LA VERDAD<br />Y EN EL HONOR</span>
+          </div>
+        </section>
+
+        <!-- Asignaturas Activas (Tabla Limpia) -->
+        <section class="section-layout">
+          <div class="page-title-row">
+            <div>
+              <h3>Mis asignaturas</h3>
+              <p class="text-secondary">Carga académica oficial en curso.</p>
+            </div>
+            <button class="btn-link" (click)="setView('Materias')">
+              Ver catálogo completo →
+            </button>
+          </div>
+
+          <div class="table-frame">
+            <table class="academic-table">
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Materia</th>
+                  <th>Profesor titular</th>
+                  <th>Progreso</th>
+                  <th class="text-right">Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (sub of subjects.slice(0, 4); track sub.code) {
+                  <tr>
+                    <td><span class="code-pill">{{ sub.code }}</span></td>
+                    <td><strong>{{ sub.name }}</strong></td>
+                    <td>{{ sub.teacher }}</td>
+                    <td>
+                      <div class="progress-indicator">
+                        <div class="progress-track">
+                          <div class="progress-fill" [style.width.%]="sub.progress"></div>
+                        </div>
+                        <span>{{ sub.progress }}%</span>
+                      </div>
+                    </td>
+                    <td class="text-right">
+                      <button class="btn-table-action" (click)="openSubject(sub)">
+                        Consultar →
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Documentos Recientes con Conversaciones -->
+        <section class="section-layout">
+          <div class="page-title-row">
+            <div>
+              <h3>Materiales recientes con discusión académica</h3>
+              <p class="text-secondary">Haz clic en cualquier archivo para abrir el visor y consultar las preguntas de tus compañeros y profesores.</p>
+            </div>
+            <button class="btn-link" (click)="setView('Repositorio')">
+              Explorar todo el acervo →
+            </button>
+          </div>
+
+          <div class="table-frame">
+            <table class="academic-table">
+              <thead>
+                <tr>
+                  <th>Formato</th>
+                  <th>Documento</th>
+                  <th>Asignatura</th>
+                  <th>Fecha</th>
+                  <th>Conversación</th>
+                  <th class="text-right">Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (doc of recentDocuments.slice(0, 4); track doc.id) {
+                  <tr (click)="openDocumentDetail(doc)" class="clickable-row">
+                    <td><span class="format-badge" [class]="doc.color">{{ doc.type }}</span></td>
+                    <td><strong>{{ doc.name }}</strong></td>
+                    <td>{{ doc.subject }}</td>
+                    <td>{{ doc.date }}</td>
+                    <td>
+                      <span class="comments-badge">
+                        {{ doc.comments.length }} comentarios
+                      </span>
+                    </td>
+                    <td class="text-right" (click)="$event.stopPropagation()">
+                      <button class="btn-table-action" (click)="openDocumentDetail(doc)">
+                        Abrir y comentar →
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Avisos de la Facultad (Lista Editorial, Sin Cards Hinchados) -->
+        <section class="section-layout">
+          <div class="page-title-row">
+            <div>
+              <h3>Avisos de la Facultad de Informática</h3>
+              <p class="text-secondary">Comunicaciones oficiales para la comunidad académica.</p>
+            </div>
+          </div>
+
+          <div class="editorial-notices-list">
+            @for (notice of notices; track notice.title) {
+              <div class="editorial-notice-item">
+                <span class="notice-date-tag">{{ notice.date }}</span>
+                <div>
+                  <strong>{{ notice.title }}</strong>
+                  <p>{{ notice.description }}</p>
+                </div>
+              </div>
+            }
+          </div>
+        </section>
+      }
+
+      <!-- Pie de Página Institucional -->
+      <footer class="app-footer">
+        <div>
+          <strong>INFOUAQ</strong> · Repositorio Académico Oficial
+        </div>
+        <span>Facultad de Informática · Universidad Autónoma de Querétaro</span>
+      </footer>
+    </div>
+  </main>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: REPORTAR COMENTARIO (Para cualquier usuario)      -->
+  <!-- ======================================================== -->
+  @if (reportingComment) {
+    <div class="modal-backdrop" (click)="closeReportModal()">
+      <div class="modal-box" (click)="$event.stopPropagation()">
+        <header class="modal-head">
+          <h3>Reportar comentario para moderación</h3>
+          <button class="btn-close" (click)="closeReportModal()">✕</button>
+        </header>
+
+        <div class="modal-content">
+          <p class="text-secondary">
+            Ayuda a mantener un ambiente de respeto y colaboración académica en INFOUAQ.
+          </p>
+
+          <div class="report-preview-quote">
+            «{{ reportingComment.content }}»
+            <small>Publicado por {{ reportingComment.authorName }}</small>
+          </div>
+
+          <label class="field-label">Selecciona el motivo del reporte:</label>
+          <select class="form-input" [(ngModel)]="selectedReportReason">
+            <option value="Contenido fuera de contexto académico">Contenido fuera de contexto académico</option>
+            <option value="Lenguaje ofensivo o inapropiado">Lenguaje ofensivo o inapropiado</option>
+            <option value="Spam o publicidad no autorizada">Spam o publicidad no autorizada</option>
+            <option value="Plagio o infracción de derechos">Plagio o infracción de derechos</option>
+          </select>
+        </div>
+
+        <footer class="modal-foot">
+          <button class="btn-secondary-sm" (click)="closeReportModal()">Cancelar</button>
+          <button class="btn-primary-sm" (click)="confirmReport()">Enviar reporte</button>
+        </footer>
+      </div>
+    </div>
+  }
+
+  <!-- ======================================================== -->
+  <!-- MODAL: SUBIR O SUSTITUIR MATERIAL ACADÉMICO              -->
+  <!-- ======================================================== -->
+  @if (isUploadModalOpen) {
+    <div class="modal-backdrop" (click)="closeUploadModal()">
+      <div class="modal-box" (click)="$event.stopPropagation()">
+        <header class="modal-head">
+          <h3>Subir material académico oficial</h3>
+          <button class="btn-close" (click)="closeUploadModal()">✕</button>
+        </header>
+
+        <form class="modal-form" (submit)="$event.preventDefault(); submitUpload()">
+          @if (uploadFormError) {
+            <div class="alert-box-error">
+              {{ uploadFormError }}
+            </div>
+          }
+
+          <div class="form-group">
+            <label>Título oficial del recurso *</label>
+            <input
+              type="text"
+              class="form-input"
+              placeholder="Ej. Guía práctica de componentes y servicios"
+              [(ngModel)]="uploadTitle"
+              name="uploadTitle"
+              required
+            />
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label>Materia *</label>
+              <select class="form-input" [(ngModel)]="uploadSubject" name="uploadSubject">
+                <option value="Programación Web">Programación Web (IS-301)</option>
+                <option value="Base de Datos">Base de Datos (IS-302)</option>
+                <option value="Diseño de Interfaces">Diseño de Interfaces (IS-303)</option>
+                <option value="Estructuras de Datos">Estructuras de Datos (IS-304)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Categoría *</label>
+              <select class="form-input" [(ngModel)]="uploadCategory" name="uploadCategory">
+                <option value="Guías">Guía de estudio</option>
+                <option value="Apuntes">Apuntes de clase</option>
+                <option value="Prácticas">Práctica de laboratorio</option>
+                <option value="Proyectos">Proyecto integrador</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Unidad temática</label>
+            <input
+              type="text"
+              class="form-input"
+              placeholder="Ej. Unidad 1: Arquitectura y Fundamentos"
+              [(ngModel)]="uploadUnit"
+              name="uploadUnit"
+            />
+          </div>
+
+          <div class="form-group">
+            <label>Descripción académica breve</label>
+            <textarea
+              class="form-input"
+              rows="3"
+              placeholder="Explica los objetivos pedagógicos o instrucciones de este material..."
+              [(ngModel)]="uploadDescription"
+              name="uploadDescription"
+            ></textarea>
+          </div>
+
+          <div class="file-picker-box">
+            <input
+              type="file"
+              id="uploadFileInput"
+              class="hidden-file-input"
+              (change)="onFileSelected($event)"
+              accept=".pdf,.docx,.pptx,.zip"
+            />
+            <label for="uploadFileInput" class="file-picker-label">
+              @if (uploadFileName) {
+                <strong>{{ uploadFileName }}</strong>
+                <span>{{ uploadFileSize }} · Haz clic para cambiar</span>
+              } @else {
+                <strong>Seleccionar archivo (PDF, DOCX, PPTX, ZIP)</strong>
+                <span>Arrastra tu archivo aquí o haz clic para examinar</span>
+              }
+            </label>
+          </div>
+
+          <footer class="modal-foot">
+            <button type="button" class="btn-secondary-sm" (click)="closeUploadModal()">Cancelar</button>
+            <button type="submit" class="btn-primary-sm">Publicar recurso</button>
+          </footer>
+        </form>
+      </div>
+    </div>
+  }
+</div>

@@ -1,11 +1,12 @@
 
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Dashboard } from './pages/dashboard/dashboard';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, Dashboard],
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
@@ -14,21 +15,31 @@ export class App {
   password = '';
   showPassword = false;
   message = '';
+  showDashboard = false;
 
   onSubmit(): void {
     this.message = '';
 
-    const normalizedEmail = this.email.trim().toLowerCase();
+    const email = this.email.trim().toLowerCase();
     const institutionalEmail =
-      /^[^\s@]+@(uaq\.mx|alumnos\.uaq\.mx)$/i;
+      /^[^\s@]+@(uaq\.mx|alumnos\.uaq\.mx)$/;
 
-    if (!institutionalEmail.test(normalizedEmail)) {
-      this.message =
-        'Utiliza tu correo institucional de la UAQ.';
+    if (!institutionalEmail.test(email)) {
+      this.message = 'Ingresa un correo institucional válido.';
       return;
     }
 
-    this.message =
-      'La interfaz funciona correctamente. La autenticación institucional todavía está pendiente de integración.';
+    if (!this.password.trim()) {
+      this.message = 'Ingresa tu contraseña.';
+      return;
+    }
+
+    this.showDashboard = true;
+  }
+
+  logout(): void {
+    this.showDashboard = false;
+    this.password = '';
+    this.message = '';
   }
 }

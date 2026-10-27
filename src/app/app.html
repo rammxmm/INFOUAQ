@@ -1,149 +1,102 @@
-
-<div class="login-page">
-
-<header class="institutional-header">
-  <img
-    class="faculty-logo"
-    src="/assets/logo-fif.png"
-    alt="Facultad de Informática"
-  />
-</header>
-
-
-  <main class="login-card" aria-labelledby="login-title">
-    <div class="card-eyebrow">
-      <span class="status-dot"></span>
-      REPOSITORIO ACADÉMICO
-    </div>
-
-    <h1 id="login-title">Tu conocimiento, en un solo lugar.</h1>
-
-    <p class="login-description">
-      Accede a los recursos académicos de la Facultad de Informática
-      de la Universidad Autónoma de Querétaro.
-    </p>
-
-    <div class="institutional-notice">
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <circle cx="12" cy="12" r="9"
-          stroke="currentColor" stroke-width="1.7"/>
-        <path d="M12 11v5m0-8h.01"
-          stroke="currentColor" stroke-width="2"
-          stroke-linecap="round"/>
+@if (showDashboard) {
+  <app-dashboard (logout)="logout()" />
+} @else {
+  <div class="split-login-container">
+    <!-- Panel Izquierdo: Contenedor Blanco con Forma Orgánica y Formulario -->
+    <section class="login-panel" aria-labelledby="login-brand">
+      <!-- Curva de transición orgánica que fluye hacia la fotografía universitaria -->
+      <svg class="curve-wave-divider" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M 0,0 C 70,14 100,28 78,48 C 52,70 14,82 55,100 L 0,100 Z" fill="#FFFFFF" />
       </svg>
 
-      <p>
-        Plataforma exclusiva para la comunidad universitaria.
-        Utiliza tu correo institucional <strong>@uaq.mx</strong>
-        o <strong>@alumnos.uaq.mx</strong>.
-      </p>
-    </div>
-
-    <form
-      class="login-form"
-      (ngSubmit)="onSubmit()"
-      #loginForm="ngForm"
-    >
-      <div class="field">
-        <label for="email">Correo institucional</label>
-
-        <input
-          id="email"
-          name="email"
-          type="email"
-          [(ngModel)]="email"
-          #emailField="ngModel"
-          placeholder="usuario@alumnos.uaq.mx"
-          autocomplete="username"
-          required
-          email
-          [attr.aria-invalid]="emailField.invalid && emailField.touched"
-          aria-describedby="email-error"
-        />
-
-        @if (emailField.invalid && emailField.touched) {
-          <p class="field-error" id="email-error">
-            Introduce un correo electrónico válido.
-          </p>
-        }
-      </div>
-
-      <div class="field">
-        <div class="label-row">
-          <label for="password">Contraseña</label>
-        </div>
-
-        <div class="password-input">
-          <input
-            id="password"
-            name="password"
-            [type]="showPassword ? 'text' : 'password'"
-            [(ngModel)]="password"
-            #passwordField="ngModel"
-            placeholder="Ingresa tu contraseña"
-            autocomplete="current-password"
-            required
-            [attr.aria-invalid]="passwordField.invalid && passwordField.touched"
-            aria-describedby="password-error"
+      <div class="login-panel-content">
+        <!-- Logotipo Oficial de la Facultad de Informática -->
+        <header class="brand-top">
+          <img
+            class="brand-logo"
+            src="/assets/logo-fif.png"
+            alt="Facultad de Informática — UAQ"
           />
+        </header>
 
-          <button
-            type="button"
-            class="password-toggle"
-            (click)="showPassword = !showPassword"
-            [attr.aria-label]="showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'"
-          >
-            {{ showPassword ? 'Ocultar' : 'Mostrar' }}
-          </button>
+        <!-- Títulos solicitados -->
+        <div class="welcome-heading">
+          <span class="welcome-kicker">Bienvenido a</span>
+          <h1 id="login-brand" class="brand-name">INFOUAQ</h1>
+          <div class="institutional-subtext">
+            <span>Universidad Autónoma de Querétaro</span>
+            <small>Facultad de Informática</small>
+          </div>
         </div>
 
-        @if (passwordField.invalid && passwordField.touched) {
-          <p class="field-error" id="password-error">
-            Introduce tu contraseña.
-          </p>
-        }
+        <!-- Formulario -->
+        <form class="auth-form" (ngSubmit)="onSubmit()" #loginForm="ngForm">
+          <!-- Campo Correo -->
+          <div class="form-input-group">
+            <label for="userEmail">Correo electrónico</label>
+            <div class="input-line-wrapper">
+              <input
+                id="userEmail"
+                name="email"
+                type="email"
+                [(ngModel)]="email"
+                placeholder="usuario@alumnos.uaq.mx"
+                autocomplete="username"
+                required
+              />
+            </div>
+            <!-- Indicación requerida debajo del correo -->
+            <small class="field-hint">
+              Debe ser el correo institucional (@uaq.mx o @alumnos.uaq.mx)
+            </small>
+          </div>
+
+          <!-- Campo Contraseña -->
+          <div class="form-input-group">
+            <label for="userPass">Contraseña</label>
+            <div class="input-line-wrapper password-wrapper">
+              <input
+                id="userPass"
+                name="password"
+                [type]="showPassword ? 'text' : 'password'"
+                [(ngModel)]="password"
+                placeholder="••••••••"
+                autocomplete="current-password"
+                required
+              />
+              <button
+                type="button"
+                class="btn-toggle-pass"
+                (click)="showPassword = !showPassword"
+                [attr.aria-label]="showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+              >
+                {{ showPassword ? 'Ocultar' : 'Mostrar' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Alerta de Validación / Error -->
+          @if (message) {
+            <div class="login-alert-error" role="alert">
+              <span>{{ message }}</span>
+            </div>
+          }
+
+          <!-- Botón de Inicio de Sesión Institucional -->
+          <button type="submit" class="btn-login-submit">
+            INICIAR SESIÓN
+          </button>
+        </form>
+
+        <footer class="login-footer">
+          <span>Repositorio Académico Institucional</span>
+        </footer>
       </div>
+    </section>
 
-      <button
-        class="submit-button"
-        type="submit"
-        [disabled]="loginForm.invalid"
-      >
-        <span>Iniciar sesión</span>
-
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M5 12h14m-6-6 6 6-6 6"
-            stroke="currentColor" stroke-width="1.8"
-            stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
-
-      @if (message) {
-        <p class="form-message" role="status">{{ message }}</p>
-      }
-    </form>
-
-    <div class="card-separator"></div>
-
-    <footer class="card-footer">
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d="M12 3 19 6v5c0 4.5-3 7.5-7 10-4-2.5-7-5.5-7-10V6l7-3Z"
-          stroke="currentColor" stroke-width="1.6"
-          stroke-linejoin="round"/>
-        <path d="m9 12 2 2 4-4"
-          stroke="currentColor" stroke-width="1.6"
-          stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-
-      <span>Acceso para usuarios autorizados</span>
-    </footer>
-
-    <p class="copyright">
-      Universidad Autónoma de Querétaro · Facultad de Informática
-    </p>
-  </main>
-
-  <p class="background-caption">
-    FACULTAD DE INFORMÁTICA · UAQ
-  </p>
-</div>
+    <!-- Panel Derecho: Fotografía Limpia de las Instalaciones con Overlay Azul Marino -->
+    <div class="visual-panel" aria-hidden="true">
+      <div class="visual-overlay"></div>
+    </div>
+  </div>
+}
