@@ -1,0 +1,33 @@
+# Dependencias
+node_modules/
+**/node_modules/
+
+# Compilados
+dist/
+**/dist/
+.angular/
+
+# Entornos y secretos
+.env
+**/.env
+!.env.example
+**/.env.example
+
+# Archivos subidos durante desarrollo
+uploads/
+**/uploads/*
+!**/uploads/.gitkeep
+
+# Logs y temporales
+*.log
+npm-debug.log*
+yarn-debug.log*
+tmp/
+**/tmp/
+
+# Sistema operativo y editores
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/settings.json
+.idea/

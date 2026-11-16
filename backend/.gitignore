@@ -1,0 +1,25 @@
+# Compilación
+/dist
+/tmp
+
+# Dependencias
+/node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Variables de entorno sensibles (usar .env.example para el repo)
+.env
+
+# Archivos subidos en desarrollo local
+/uploads/*
+!/uploads/.gitkeep
+
+# IDEs
+.vscode/*
+!.vscode/settings.json
+.idea/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
