@@ -1,0 +1,316 @@
+:host {
+  display: block;
+  min-height: 100vh;
+  font-family: var(--font-family-base, 'Inter', -apple-system, sans-serif);
+  color: #142D4E;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* ==========================================================================
+   LOGIN SPLIT-SCREEN CON CURVA ORGÁNICA E IDENTIDAD UAQ
+   ========================================================================== */
+
+.split-login-container {
+  display: flex;
+  min-height: 100vh;
+  position: relative;
+  background-color: #0E223D;
+  overflow: hidden;
+}
+
+/* Panel Izquierdo: Contenedor Blanco */
+.login-panel {
+  position: relative;
+  z-index: 20;
+  width: min(540px, 48vw);
+  min-height: 100vh;
+  background-color: #FFFFFF;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 48px 56px;
+  box-shadow: 8px 0 32px rgba(14, 34, 61, 0.15);
+}
+
+/* Divisor Curvo Orgánico hacia la Fotografía */
+.curve-wave-divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 100%;
+  width: 130px;
+  height: 100%;
+  pointer-events: none;
+  z-index: 20;
+  display: block;
+}
+
+.login-panel-content {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Logotipo */
+.brand-top {
+  margin-bottom: 28px;
+}
+
+.brand-logo {
+  display: block;
+  height: 48px;
+  width: auto;
+  max-width: 220px;
+  object-fit: contain;
+}
+
+/* Títulos Solicitados */
+.welcome-heading {
+  margin-bottom: 32px;
+}
+
+.welcome-kicker {
+  display: block;
+  font-size: 15px;
+  font-weight: 500;
+  color: #556578;
+  letter-spacing: -0.2px;
+}
+
+.brand-name {
+  margin: 2px 0 6px;
+  font-size: 34px;
+  font-weight: 800;
+  color: #142D4E;
+  letter-spacing: -0.8px;
+  line-height: 1.15;
+}
+
+.institutional-subtext {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+
+  span {
+    font-size: 13px;
+    font-weight: 600;
+    color: #142D4E;
+  }
+
+  small {
+    font-size: 12px;
+    color: #7E8D9F;
+    font-weight: 500;
+  }
+}
+
+/* Formulario */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-input-group {
+  display: flex;
+  flex-direction: column;
+
+  label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #556578;
+    margin-bottom: 6px;
+  }
+}
+
+/* Inputs estilo minimalista con línea inferior o contorno sutil */
+.input-line-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-bottom: 1.5px solid #D2D8E0;
+  transition: border-color 140ms ease;
+
+  input {
+    width: 100%;
+    height: 40px;
+    padding: 0 4px;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    font-size: 14px;
+    color: #142D4E;
+
+    &::placeholder {
+      color: #A0AEC0;
+      font-size: 13px;
+    }
+  }
+
+  &:focus-within {
+    border-bottom-color: #142D4E;
+    border-bottom-width: 2px;
+  }
+}
+
+.password-wrapper {
+  input {
+    padding-right: 60px;
+  }
+}
+
+.btn-toggle-pass {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  color: #142D4E;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 6px;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+/* Indicación solicitada debajo del correo */
+.field-hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: #7E8D9F;
+  line-height: 1.4;
+}
+
+/* Alerta de Error */
+.login-alert-error {
+  padding: 8px 12px;
+  border-left: 3px solid #B91C1C;
+  background: #FEF2F2;
+  color: #991B1B;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* Botón de Inicio de Sesión */
+.btn-login-submit {
+  width: 100%;
+  max-width: 200px;
+  height: 44px;
+  margin-top: 8px;
+  border: 0;
+  border-radius: 22px;
+  background: #142D4E;
+  color: #FFFFFF;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(20, 45, 78, 0.25);
+  transition: all 140ms ease;
+
+  &:hover {
+    background: #1C3E6A;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(20, 45, 78, 0.35);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+.login-footer {
+  margin-top: 40px;
+  padding-top: 18px;
+  border-top: 1px solid #EDF1F5;
+  font-size: 11px;
+  color: #A0AEC0;
+}
+
+/* Panel Derecho: Fotografía Universitaria */
+.visual-panel {
+  flex: 1;
+  position: relative;
+  background: url('/assets/facultad-bg.jpg') center center / cover no-repeat;
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-end;
+  padding: 48px 56px;
+}
+
+.visual-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(135deg, rgba(20, 45, 78, 0.45) 0%, rgba(14, 34, 61, 0.85) 100%),
+    linear-gradient(0deg, rgba(14, 34, 61, 0.9) 0%, transparent 60%);
+}
+
+.visual-content {
+  position: relative;
+  z-index: 10;
+  color: #FFFFFF;
+  max-width: 480px;
+
+  h2 {
+    margin: 6px 0 4px;
+    font-size: 26px;
+    font-weight: 700;
+    color: #FFFFFF;
+    letter-spacing: -0.4px;
+  }
+
+  p {
+    margin: 0;
+    font-size: 13px;
+    color: #C5D0DE;
+  }
+}
+
+.motto-tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  color: #C5CAD1;
+}
+
+/* ==========================================================================
+   RESPONSIVIDAD
+   ========================================================================== */
+
+@media (max-width: 900px) {
+  .split-login-container {
+    flex-direction: column;
+  }
+
+  .login-panel {
+    width: 100%;
+    min-height: auto;
+    padding: 40px 24px;
+    box-shadow: none;
+  }
+
+  .curve-wave-divider {
+    display: none;
+  }
+
+  .visual-panel {
+    min-height: 220px;
+    padding: 24px;
+  }
+
+  .btn-login-submit {
+    max-width: 100%;
+  }
+}
