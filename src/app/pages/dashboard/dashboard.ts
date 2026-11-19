@@ -1,6 +1,9 @@
-import { Component, output } from '@angular/core';
+import { Component, output, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { FileService } from '../../services/file.service';
+import { CommentService } from '../../services/comment.service';
+import { AuthService } from '../../services/auth.service';
 
 export type UserRole = 'Estudiante' | 'Profesor' | 'Administrador';
 
@@ -79,8 +82,16 @@ export interface InstitutionalUser {
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss',
 })
-export class Dashboard {
+export class Dashboard implements OnInit {
+  private readonly fileService = inject(FileService);
+  private readonly commentService = inject(CommentService);
+  private readonly authService = inject(AuthService);
   logout = output<void>();
+
+  // Estado de carga y archivo adjunto para subida
+  selectedUploadFile: File | null = null;
+  isUploading = false;
+  isLoadingFiles = false;
 
   // Navegación principal
   activeView:
@@ -489,10 +500,36 @@ export class Dashboard {
     },
   ];
 
+  ngOnInit(): void {
+    const authUser = this.authService.getUser();
+    if (authUser) {
+      this.currentUser = authUser;
+      this.currentRole = authUser.role;
+    }
+    this.cargarArchivosDesdeServidor();
+  }
+
+  cargarArchivosDesdeServidor(): void {
+    this.isLoadingFiles = true;
+    this.fileService.getFiles().subscribe({
+      next: (archivos) => {
+        this.isLoadingFiles = false;
+        if (archivos && archivos.length > 0) {
+          this.documents = archivos;
+        }
+      },
+      error: (err) => {
+        this.isLoadingFiles = false;
+        console.warn('Backend API no disponible; utilizando catálogo de respaldo:', err);
+      },
+    });
+  }
+
   // Cambio de Rol para Simulación en UI
   switchRole(role: UserRole): void {
     this.currentRole = role;
     this.currentUser = this.profiles[role];
+    this.authService.setUser(this.currentUser);
 
     // Restricción: Si un estudiante está en paneles administrativos, retornar a Inicio
     if (this.currentRole === 'Estudiante') {
@@ -624,6 +661,21 @@ export class Dashboard {
     this.replyingCommentId = null;
     this.editingCommentId = null;
     window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Cargar comentarios en tiempo real desde PostgreSQL si el archivo está en la BD
+    const numId = parseInt(doc.id, 10);
+    if (!isNaN(numId)) {
+      this.commentService.getComments(doc.id).subscribe({
+        next: (comentarios) => {
+          if (comentarios && comentarios.length > 0) {
+            doc.comments = comentarios;
+          }
+        },
+        error: (err) => {
+          console.warn('Comentarios del backend no disponibles, manteniendo locales:', err);
+        },
+      });
+    }
   }
 
   backFromDocumentDetail(): void {
@@ -636,12 +688,54 @@ export class Dashboard {
     this.showFeedback(
       `Descargando "${doc.name}" desde el repositorio oficial UAQ...`
     );
+    this.fileService.triggerDownload(doc.id, doc.name);
   }
 
   // Publicar comentario en el documento
   submitNewComment(): void {
     if (!this.selectedDocument || !this.newCommentText.trim()) return;
+    const texto = this.newCommentText.trim();
+    const docActual = this.selectedDocument;
 
+    const numDocId = parseInt(docActual.id, 10);
+    if (!isNaN(numDocId)) {
+      this.commentService
+        .addComment(docActual.id, {
+          content: texto,
+          authorName: this.currentUser.name,
+          authorRole: this.currentUser.role,
+          authorExpediente: this.currentUser.expediente,
+        })
+        .subscribe({
+          next: (nuevo) => {
+            docActual.comments.unshift(nuevo);
+            this.newCommentText = '';
+            this.showFeedback('Tu comentario ha sido publicado y guardado en PostgreSQL.');
+          },
+          error: (err) => {
+            console.error('Error al guardar comentario en backend:', err);
+            // Fallback en memoria
+            const newComment: DocumentComment = {
+              id: `c-${Date.now()}`,
+              authorName: this.currentUser.name,
+              authorInitials: this.currentUser.initials,
+              authorRole: this.currentUser.role,
+              authorExpediente: this.currentUser.expediente,
+              timestamp: 'Justo ahora',
+              content: texto,
+              likes: 0,
+              userLiked: false,
+              replies: [],
+            };
+            docActual.comments.unshift(newComment);
+            this.newCommentText = '';
+            this.showFeedback('Tu comentario ha sido publicado en el documento.');
+          },
+        });
+      return;
+    }
+
+    // Archivo de prueba local
     const newComment: DocumentComment = {
       id: `c-${Date.now()}`,
       authorName: this.currentUser.name,
@@ -649,13 +743,13 @@ export class Dashboard {
       authorRole: this.currentUser.role,
       authorExpediente: this.currentUser.expediente,
       timestamp: 'Justo ahora',
-      content: this.newCommentText.trim(),
+      content: texto,
       likes: 0,
       userLiked: false,
       replies: [],
     };
 
-    this.selectedDocument.comments.unshift(newComment);
+    docActual.comments.unshift(newComment);
     this.newCommentText = '';
     this.showFeedback('Tu comentario ha sido publicado en el documento.');
   }
@@ -673,12 +767,55 @@ export class Dashboard {
   }
 
   submitReply(parentComment: DocumentComment): void {
-    if (!this.replyText.trim()) return;
+    if (!this.replyText.trim() || !this.selectedDocument) return;
+    const texto = this.replyText.trim();
+    const docActual = this.selectedDocument;
+    const parentIdNum = parseInt(parentComment.id, 10);
 
+    if (!isNaN(parentIdNum)) {
+      this.commentService
+        .addComment(docActual.id, {
+          content: texto,
+          parentId: parentIdNum,
+          authorName: this.currentUser.name,
+          authorRole: this.currentUser.role,
+          authorExpediente: this.currentUser.expediente,
+        })
+        .subscribe({
+          next: (reply) => {
+            if (!parentComment.replies) parentComment.replies = [];
+            parentComment.replies.push(reply);
+            this.replyingCommentId = null;
+            this.replyText = '';
+            this.showFeedback('Respuesta agregada al hilo de conversación en PostgreSQL.');
+          },
+          error: (err) => {
+            console.error('Error al responder en backend:', err);
+            if (!parentComment.replies) parentComment.replies = [];
+            const reply: DocumentComment = {
+              id: `rep-${Date.now()}`,
+              authorName: this.currentUser.name,
+              authorInitials: this.currentUser.initials,
+              authorRole: this.currentUser.role,
+              authorExpediente: this.currentUser.expediente,
+              timestamp: 'Justo ahora',
+              content: texto,
+              likes: 0,
+              userLiked: false,
+            };
+            parentComment.replies.push(reply);
+            this.replyingCommentId = null;
+            this.replyText = '';
+            this.showFeedback('Respuesta agregada al hilo de conversación.');
+          },
+        });
+      return;
+    }
+
+    // Local fallback
     if (!parentComment.replies) {
       parentComment.replies = [];
     }
-
     const reply: DocumentComment = {
       id: `rep-${Date.now()}`,
       authorName: this.currentUser.name,
@@ -686,7 +823,7 @@ export class Dashboard {
       authorRole: this.currentUser.role,
       authorExpediente: this.currentUser.expediente,
       timestamp: 'Justo ahora',
-      content: this.replyText.trim(),
+      content: texto,
       likes: 0,
       userLiked: false,
     };
@@ -701,6 +838,17 @@ export class Dashboard {
   toggleLike(item: DocumentComment): void {
     item.userLiked = !item.userLiked;
     item.likes += item.userLiked ? 1 : -1;
+
+    const numId = parseInt(item.id, 10);
+    if (!isNaN(numId)) {
+      this.commentService.toggleLike(item.id).subscribe({
+        next: (res) => {
+          item.likes = res.likes;
+          item.userLiked = res.userLiked;
+        },
+        error: (err) => console.warn('Error al alternar like en backend:', err),
+      });
+    }
   }
 
   // Edición de comentarios propios
@@ -717,16 +865,33 @@ export class Dashboard {
 
   saveEdit(comment: DocumentComment): void {
     if (!this.editCommentText.trim()) return;
-    comment.content = this.editCommentText.trim();
+    const nuevoTexto = this.editCommentText.trim();
+    comment.content = nuevoTexto;
     comment.isEdited = true;
     this.editingCommentId = null;
     this.editCommentText = '';
-    this.showFeedback('Comentario actualizado.');
+
+    const numId = parseInt(comment.id, 10);
+    if (!isNaN(numId)) {
+      this.commentService.editComment(comment.id, nuevoTexto).subscribe({
+        next: () => this.showFeedback('Comentario actualizado en PostgreSQL.'),
+        error: () => this.showFeedback('Comentario actualizado.'),
+      });
+    } else {
+      this.showFeedback('Comentario actualizado.');
+    }
   }
 
   // Eliminación de comentarios propios
   deleteComment(comment: DocumentComment, parentComment?: DocumentComment): void {
     if (!this.selectedDocument) return;
+
+    const numId = parseInt(comment.id, 10);
+    if (!isNaN(numId)) {
+      this.commentService.deleteComment(comment.id).subscribe({
+        error: (err) => console.warn('Error al eliminar en backend:', err),
+      });
+    }
 
     if (parentComment && parentComment.replies) {
       const idx = parentComment.replies.indexOf(comment);
@@ -765,9 +930,33 @@ export class Dashboard {
     if (this.reportingComment) {
       this.reportingComment.isReported = true;
       this.reportingComment.reportReason = this.selectedReportReason;
-      this.showFeedback(
-        'El comentario ha sido reportado para revisión de la administración.'
-      );
+
+      const numId = parseInt(this.reportingComment.id, 10);
+      if (!isNaN(numId)) {
+        this.commentService
+          .reportComment(
+            this.reportingComment.id,
+            this.selectedReportReason,
+            undefined,
+            this.currentUser.name,
+          )
+          .subscribe({
+            next: () => {
+              this.showFeedback(
+                'El comentario ha sido reportado para revisión de la administración y registrado en PostgreSQL.',
+              );
+            },
+            error: () => {
+              this.showFeedback(
+                'El comentario ha sido reportado para revisión de la administración.',
+              );
+            },
+          });
+      } else {
+        this.showFeedback(
+          'El comentario ha sido reportado para revisión de la administración.',
+        );
+      }
       this.closeReportModal();
     }
   }
@@ -817,17 +1006,22 @@ export class Dashboard {
     this.uploadDescription = '';
     this.uploadFileName = '';
     this.uploadFileSize = '';
+    this.selectedUploadFile = null;
+    this.isUploading = false;
   }
 
   closeUploadModal(): void {
     this.isUploadModalOpen = false;
     this.uploadFormError = '';
+    this.selectedUploadFile = null;
+    this.isUploading = false;
   }
 
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
       const file = input.files[0];
+      this.selectedUploadFile = file;
       this.uploadFileName = file.name;
       const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
       this.uploadFileSize = `${sizeMb} MB`;
@@ -843,11 +1037,56 @@ export class Dashboard {
       return;
     }
 
-    if (!this.uploadFileName) {
+    if (!this.selectedUploadFile && !this.uploadFileName) {
       this.uploadFormError = 'Selecciona un archivo PDF, PPTX, DOCX o ZIP.';
       return;
     }
 
+    // Si tenemos el archivo físico seleccionado, lo subimos a NestJS + PostgreSQL
+    if (this.selectedUploadFile) {
+      this.isUploading = true;
+      this.uploadFormError = '';
+
+      const carreraClave = this.currentUser.carreraOrDept.includes('INF')
+        ? 'INF18'
+        : this.currentUser.carreraOrDept.includes('SOF')
+        ? 'SOF18'
+        : 'ITIC22';
+
+      const semestreNum =
+        parseInt(this.currentUser.semestreOrCargo.replace(/[^0-9]/g, ''), 10) || 3;
+
+      this.fileService
+        .uploadFile(this.selectedUploadFile, {
+          titulo: this.uploadTitle.trim(),
+          descripcion: this.uploadDescription.trim(),
+          carreraId: carreraClave,
+          materia: this.uploadSubject,
+          semestre: semestreNum,
+          categoria: this.uploadCategory,
+          autorNombre: this.currentUser.name,
+          autorRol: this.currentUser.role,
+        })
+        .subscribe({
+          next: (docCreado) => {
+            this.isUploading = false;
+            this.documents.unshift(docCreado);
+            this.closeUploadModal();
+            this.showFeedback(
+              `El documento "${docCreado.name}" ha sido incorporado al repositorio y guardado en PostgreSQL.`
+            );
+          },
+          error: (err) => {
+            this.isUploading = false;
+            console.error('Error al subir archivo al backend:', err);
+            this.uploadFormError =
+              'Error al subir el archivo al servidor. Asegúrate de que sea un PDF válido (máx. 25 MB).';
+          },
+        });
+      return;
+    }
+
+    // Respaldo visual si no hay archivo físico
     const ext = this.uploadFileName.split('.').pop()?.toUpperCase() ?? 'PDF';
     const docType: 'PDF' | 'PPTX' | 'DOCX' | 'ZIP' =
       ext === 'PPTX'
@@ -885,11 +1124,22 @@ export class Dashboard {
   }
 
   deleteDocumentFromRepo(doc: AcademicDocument): void {
-    const idx = this.documents.indexOf(doc);
-    if (idx > -1) {
-      this.documents.splice(idx, 1);
-      this.showFeedback(`Se retiró "${doc.name}" del repositorio.`);
-    }
+    this.fileService.deleteFile(doc.id).subscribe({
+      next: () => {
+        const idx = this.documents.indexOf(doc);
+        if (idx > -1) {
+          this.documents.splice(idx, 1);
+        }
+        this.showFeedback(`Se retiró "${doc.name}" del repositorio y de la base de datos.`);
+      },
+      error: () => {
+        const idx = this.documents.indexOf(doc);
+        if (idx > -1) {
+          this.documents.splice(idx, 1);
+        }
+        this.showFeedback(`Se retiró "${doc.name}" del repositorio.`);
+      },
+    });
   }
 
   toggleUserStatus(user: InstitutionalUser): void {

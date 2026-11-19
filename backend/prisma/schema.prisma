@@ -1,0 +1,362 @@
+// ─────────────────────────────────────────────────────────────
+//  INFOUAQ — Prisma Schema v2
+//  17 modelos | 5 ENUMs | Equivalente exacto al script SQL planeado
+//  Facultad de Informática UAQ — 6.º Semestre
+// ─────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMs ───────────────────────────────────────────────────
+
+enum EstadoCuenta {
+  ACTIVA
+  INACTIVA
+  SUSPENDIDA
+}
+
+enum EstadoArchivo {
+  PUBLICADO
+  EN_REVISION
+  OCULTO
+}
+
+enum EstadoComentario {
+  VISIBLE
+  OCULTO
+  ELIMINADO
+}
+
+enum EstadoReporte {
+  PENDIENTE
+  DESCARTADO
+  CONFIRMADO
+}
+
+enum EstadoRevision {
+  PENDIENTE
+  APROBADO
+  OBSERVADO
+}
+
+// ─── TABLAS BASE (sin dependencias) ─────────────────────────
+
+/// Roles institucionales: Estudiante, Profesor, Administrador
+model Rol {
+  id          Int      @id @default(autoincrement())
+  nombre      String   @unique
+  descripcion String?
+
+  usuarios    Usuario[]
+
+  @@map("roles")
+}
+
+/// Programas académicos de la Facultad de Informática
+model Carrera {
+  id       Int     @id @default(autoincrement())
+  clave    String  @unique   // ej. "ITIC22", "SOF18"
+  nombre   String
+  creditos Int?
+
+  usuarios          Usuario[]
+  materias_carreras MateriasCarrera[]
+
+  @@map("carreras")
+}
+
+/// Áreas del conocimiento (Matemáticas, Programación, Redes, etc.)
+model AreaConocimiento {
+  id     Int    @id @default(autoincrement())
+  nombre String @unique
+
+  materias          Materia[]
+  supervision_areas SupervisionArea[]
+
+  @@map("areas_conocimiento")
+}
+
+/// Periodos académicos (Enero–Junio 2025, etc.)
+model Periodo {
+  id           Int       @id @default(autoincrement())
+  nombre       String    @unique
+  fecha_inicio DateTime?
+  fecha_fin    DateTime?
+  activo       Boolean   @default(false)
+
+  materias_profesores MateriasProfesor[]
+
+  @@map("periodos")
+}
+
+// ─── USUARIOS Y SEGURIDAD ────────────────────────────────────
+
+/// Usuario institucional (Estudiante, Profesor o Administrador)
+model Usuario {
+  id             Int          @id @default(autoincrement())
+  correo         String       @unique
+  password_hash  String
+  nombre         String
+  apellidos      String
+  rol_id         Int
+  estado         EstadoCuenta @default(ACTIVA)
+  carrera_id     Int?
+  semestre       Int?
+  creado_en      DateTime     @default(now())
+  actualizado_en DateTime     @default(now()) @updatedAt
+  ultimo_acceso  DateTime?
+
+  rol    Rol      @relation(fields: [rol_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  carrera Carrera? @relation(fields: [carrera_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  tokens_recuperacion TokenRecuperacion[]
+  materias_profesores MateriasProfesor[]
+  carpetas            Carpeta[]
+  archivos            Archivo[]
+  comentarios         Comentario[]
+  comentarios_likes   ComentarioLike[]
+  reportes_hechos     ReporteComentario[] @relation("Reportante")
+  reportes_resueltos  ReporteComentario[] @relation("ResueltosPor")
+  supervision_areas   SupervisionArea[]
+  revisiones          RevisionArchivo[]
+  bitacora            BitacoraAuditoria[]
+
+  @@index([rol_id], name: "usuarios_rol_id_idx")
+  @@index([carrera_id], name: "usuarios_carrera_id_idx")
+  @@map("usuarios")
+}
+
+/// Tokens de recuperación de contraseña (un uso, con expiración)
+model TokenRecuperacion {
+  id         Int       @id @default(autoincrement())
+  usuario_id Int
+  token_hash String    @unique
+  expira_en  DateTime
+  usado_en   DateTime?
+  creado_en  DateTime  @default(now())
+
+  usuario Usuario @relation(fields: [usuario_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([usuario_id], name: "tokens_recuperacion_usuario_id_idx")
+  @@map("tokens_recuperacion")
+}
+
+// ─── CATÁLOGO ACADÉMICO ──────────────────────────────────────
+
+/// Materias del catálogo académico de la facultad
+model Materia {
+  id          Int      @id @default(autoincrement())
+  clave       String   @unique   // ej. "MAT101"
+  nombre      String
+  descripcion String?
+  area_id     Int?
+  activa      Boolean  @default(true)
+  creado_en   DateTime @default(now())
+
+  area AreaConocimiento? @relation(fields: [area_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  materias_carreras   MateriasCarrera[]
+  materias_profesores MateriasProfesor[]
+  carpetas            Carpeta[]
+  archivos            Archivo[]
+
+  @@index([area_id], name: "materias_area_id_idx")
+  @@map("materias")
+}
+
+/// Relación M:N entre materias y carreras (con semestre asignado)
+model MateriasCarrera {
+  materia_id Int
+  carrera_id Int
+  semestre   Int   // 1 al 8
+
+  materia Materia @relation(fields: [materia_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  carrera Carrera @relation(fields: [carrera_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([materia_id, carrera_id])
+  @@index([carrera_id, semestre], name: "materias_carreras_carrera_semestre_idx")
+  @@map("materias_carreras")
+}
+
+/// Qué profesor imparte qué materia en qué periodo
+model MateriasProfesor {
+  materia_id  Int
+  profesor_id Int
+  periodo_id  Int
+
+  materia  Materia @relation(fields: [materia_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  profesor Usuario @relation(fields: [profesor_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  periodo  Periodo @relation(fields: [periodo_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@id([materia_id, profesor_id, periodo_id])
+  @@index([profesor_id], name: "materias_profesores_profesor_id_idx")
+  @@map("materias_profesores")
+}
+
+// ─── REPOSITORIO ─────────────────────────────────────────────
+
+/// Carpetas organizadoras del docente dentro de una materia (admite subcarpetas)
+model Carpeta {
+  id             Int      @id @default(autoincrement())
+  nombre         String
+  materia_id     Int
+  propietario_id Int
+  padre_id       Int?     // Auto-referencia para subcarpetas
+
+  materia     Materia  @relation(fields: [materia_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  propietario Usuario  @relation(fields: [propietario_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  padre       Carpeta? @relation("Subcarpetas", fields: [padre_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  subcarpetas Carpeta[] @relation("Subcarpetas")
+  archivos    Archivo[]
+
+  creado_en DateTime @default(now())
+
+  @@index([materia_id, propietario_id], name: "carpetas_materia_propietario_idx")
+  @@map("carpetas")
+}
+
+/// Documento académico subido a la plataforma
+/// tema almacena la categoría: "Guías" | "Apuntes" | "Prácticas" | "Proyectos"
+model Archivo {
+  id              Int           @id @default(autoincrement())
+  titulo          String
+  tema            String?       // Categoría del recurso (Guías, Apuntes, Prácticas, Proyectos)
+  parcial         Int?          // Número de parcial relacionado (1, 2, 3), si aplica
+  nombre_original String
+  ruta_almacen    String        // Ruta relativa dentro de uploads/
+  tamano_bytes    BigInt
+  mime_type       String        @default("application/pdf")
+  estado          EstadoArchivo @default(PUBLICADO)
+  materia_id      Int
+  docente_id      Int
+  carpeta_id      Int?
+  descargas       Int           @default(0)
+  creado_en       DateTime      @default(now())
+  actualizado_en  DateTime      @default(now()) @updatedAt
+
+  materia  Materia  @relation(fields: [materia_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  docente  Usuario  @relation(fields: [docente_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  carpeta  Carpeta? @relation(fields: [carpeta_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  comentarios Comentario[]
+  revisiones  RevisionArchivo[]
+
+  @@index([materia_id], name: "archivos_materia_id_idx")
+  @@index([docente_id], name: "archivos_docente_id_idx")
+  @@index([carpeta_id], name: "archivos_carpeta_id_idx")
+  @@map("archivos")
+}
+
+// ─── COMENTARIOS ─────────────────────────────────────────────
+
+/// Comentario dentro de la pantalla de detalle de un archivo académico
+model Comentario {
+  id             Int              @id @default(autoincrement())
+  archivo_id     Int
+  autor_id       Int
+  padre_id       Int?             // Auto-referencia para respuestas
+  contenido      String
+  estado         EstadoComentario @default(VISIBLE)
+  editado        Boolean          @default(false)
+  creado_en      DateTime         @default(now())
+  actualizado_en DateTime         @default(now()) @updatedAt
+
+  archivo    Archivo     @relation(fields: [archivo_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  autor      Usuario     @relation(fields: [autor_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  padre      Comentario? @relation("Respuestas", fields: [padre_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  respuestas Comentario[] @relation("Respuestas")
+
+  likes    ComentarioLike[]
+  reportes ReporteComentario[]
+
+  @@index([archivo_id], name: "comentarios_archivo_id_idx")
+  @@index([padre_id], name: "comentarios_padre_id_idx")
+  @@map("comentarios")
+}
+
+/// Un usuario solo puede dar un like por comentario (PK compuesta)
+model ComentarioLike {
+  comentario_id Int
+  usuario_id    Int
+  creado_en     DateTime @default(now())
+
+  comentario Comentario @relation(fields: [comentario_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  usuario    Usuario    @relation(fields: [usuario_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([comentario_id, usuario_id])
+  @@map("comentarios_likes")
+}
+
+/// Reporte de un comentario inapropiado para moderación
+model ReporteComentario {
+  id              Int           @id @default(autoincrement())
+  comentario_id   Int
+  reportante_id   Int
+  motivo          String
+  estado          EstadoReporte @default(PENDIENTE)
+  resuelto_por_id Int?
+  resuelto_en     DateTime?
+  creado_en       DateTime      @default(now())
+
+  comentario   Comentario @relation(fields: [comentario_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  reportante   Usuario    @relation("Reportante", fields: [reportante_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  resuelto_por Usuario?   @relation("ResueltosPor", fields: [resuelto_por_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([estado], name: "reportes_comentarios_estado_idx")
+  @@map("reportes_comentarios")
+}
+
+// ─── SUPERVISIÓN Y AUDITORÍA ──────────────────────────────────
+
+/// Áreas que supervisa un administrador/moderador
+model SupervisionArea {
+  usuario_id Int
+  area_id    Int
+
+  usuario Usuario          @relation(fields: [usuario_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  area    AreaConocimiento @relation(fields: [area_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([usuario_id, area_id])
+  @@map("supervision_areas")
+}
+
+/// Revisión de un archivo por parte de un moderador o administrador
+model RevisionArchivo {
+  id            Int            @id @default(autoincrement())
+  archivo_id    Int
+  revisor_id    Int
+  estado        EstadoRevision @default(PENDIENTE)
+  observaciones String?
+  creado_en     DateTime       @default(now())
+
+  archivo Archivo @relation(fields: [archivo_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  revisor Usuario @relation(fields: [revisor_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([archivo_id], name: "revisiones_archivos_archivo_id_idx")
+  @@map("revisiones_archivos")
+}
+
+/// Registro de auditoría de acciones del sistema
+model BitacoraAuditoria {
+  id         Int      @id @default(autoincrement())
+  usuario_id Int?
+  accion     String
+  entidad    String
+  entidad_id Int?
+  detalle    Json?
+  ip         String?
+  creado_en  DateTime @default(now())
+
+  usuario Usuario? @relation(fields: [usuario_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([usuario_id], name: "bitacora_auditoria_usuario_id_idx")
+  @@index([entidad, entidad_id], name: "bitacora_auditoria_entidad_idx")
+  @@index([creado_en], name: "bitacora_auditoria_creado_en_idx")
+  @@map("bitacora_auditoria")
+}

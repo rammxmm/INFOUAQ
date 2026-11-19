@@ -74,10 +74,10 @@ export class FilesService {
     };
 
     // 3. Persistir en el repositorio
-    await this.filesRepository.guardar(nuevoDocumento);
-    this.logger.log(`Documento registrado: ${nuevoDocumento.titulo} (${nuevoDocumento.id})`);
+    const documentoGuardado = await this.filesRepository.guardar(nuevoDocumento);
+    this.logger.log(`Documento registrado: ${documentoGuardado.titulo} (${documentoGuardado.id})`);
 
-    return nuevoDocumento;
+    return documentoGuardado;
   }
 
   /**
