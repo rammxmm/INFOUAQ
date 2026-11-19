@@ -11,6 +11,17 @@ export interface CommentApiResponse<T> {
   timestamp: string;
 }
 
+export interface CommentNotification {
+  id: number;
+  archivoId: number;
+  archivoTitulo: string;
+  remitenteNombre: string;
+  remitenteRol: string;
+  contenidoRespuesta: string;
+  tuComentario: string;
+  fecha: string;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -118,5 +129,18 @@ export class CommentService {
         reportanteNombre: reporterName,
       },
     );
+  }
+
+  /**
+   * Obtiene notificaciones de respuestas
+   */
+  getNotifications(userId: number): Observable<CommentNotification[]> {
+    const params = new HttpParams().set('userId', userId.toString());
+    return this.http
+      .get<CommentApiResponse<CommentNotification[]>>(
+        `${this.baseUrl}/comments/notifications/me`,
+        { params },
+      )
+      .pipe(map((res) => res.data || []));
   }
 }

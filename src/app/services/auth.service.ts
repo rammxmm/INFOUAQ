@@ -63,13 +63,15 @@ export class AuthService {
   }
 
   /**
-   * Registro de nuevo estudiante
+   * Registro público exclusivo de estudiantes (@alumnos.uaq.mx)
    */
   register(datos: {
     correo: string;
     password: string;
     nombre: string;
     apellidos: string;
+    expediente?: string;
+    carrera_id?: number;
     carreraClave?: string;
     semestre?: number;
   }): Observable<ApiResponse<AuthResponse>> {
@@ -85,6 +87,26 @@ export class AuthService {
           }
         }),
       );
+  }
+
+  /**
+   * Solicita token de recuperación de contraseña institucional
+   */
+  forgotPassword(correo: string): Observable<ApiResponse<{ mensaje: string; token?: string }>> {
+    return this.http.post<ApiResponse<{ mensaje: string; token?: string }>>(
+      `${this.apiUrl}/forgot-password`,
+      { correo },
+    );
+  }
+
+  /**
+   * Restablece contraseña institucional con token
+   */
+  resetPassword(token: string, nuevoPassword: string): Observable<ApiResponse<{ mensaje: string }>> {
+    return this.http.post<ApiResponse<{ mensaje: string }>>(
+      `${this.apiUrl}/reset-password`,
+      { token, nuevoPassword },
+    );
   }
 
   /**

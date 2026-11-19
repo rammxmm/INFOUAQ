@@ -22,22 +22,31 @@ export class RegisterDto {
   @MinLength(6, { message: 'La contraseña debe contener al menos 6 caracteres.' })
   password: string;
 
-  @IsString()
+  @IsString({ message: 'El nombre es obligatorio.' })
   @IsNotEmpty({ message: 'El nombre es obligatorio.' })
   nombre: string;
 
-  @IsString()
+  @IsString({ message: 'Los apellidos son obligatorios.' })
   @IsNotEmpty({ message: 'Los apellidos son obligatorios.' })
   apellidos: string;
 
+  @IsString({ message: 'El número de expediente es obligatorio.' })
+  @IsNotEmpty({ message: 'El número de expediente es obligatorio.' })
+  expediente: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  carreraId?: number;
+
   @IsOptional()
   @IsString()
-  carreraClave?: string; // ej. "INF18", "ITIC22"
+  carreraClave?: string;
 
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(1)
-  @Max(8)
+  @Max(9)
   semestre?: number;
 }

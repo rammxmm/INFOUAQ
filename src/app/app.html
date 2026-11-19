@@ -2,7 +2,7 @@
   <app-dashboard (logout)="logout()" />
 } @else {
   <div class="split-login-container">
-    <!-- Panel Izquierdo: Contenedor Blanco con Forma Orgánica y Formulario -->
+    <!-- Panel Izquierdo: Contenedor Blanco con Forma Orgánica y Formularios -->
     <section class="login-panel" aria-labelledby="login-brand">
       <!-- Curva de transición orgánica que fluye hacia la fotografía universitaria -->
       <svg class="curve-wave-divider" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
@@ -19,9 +19,9 @@
           />
         </header>
 
-        <!-- Títulos solicitados -->
+        <!-- Títulos institucionales -->
         <div class="welcome-heading">
-          <span class="welcome-kicker">Bienvenido a</span>
+          <span class="welcome-kicker">Plataforma Académica</span>
           <h1 id="login-brand" class="brand-name">INFOUAQ</h1>
           <div class="institutional-subtext">
             <span>Universidad Autónoma de Querétaro</span>
@@ -29,67 +29,378 @@
           </div>
         </div>
 
-        <!-- Formulario -->
-        <form class="auth-form" (ngSubmit)="onSubmit()" #loginForm="ngForm">
-          <!-- Campo Correo -->
-          <div class="form-input-group">
-            <label for="userEmail">Correo electrónico</label>
-            <div class="input-line-wrapper">
-              <input
-                id="userEmail"
-                name="email"
-                type="email"
-                [(ngModel)]="email"
-                placeholder="usuario@alumnos.uaq.mx"
-                autocomplete="username"
-                required
-              />
-            </div>
-            <!-- Indicación requerida debajo del correo -->
-            <small class="field-hint">
-              Debe ser el correo institucional (@uaq.mx o @alumnos.uaq.mx)
-            </small>
-          </div>
+        <!-- Pestañas Institucionales: Login / Registro / Recuperación -->
+        <nav class="auth-tabs" aria-label="Navegación de autenticación">
+          <button
+            type="button"
+            class="auth-tab-btn"
+            [class.active]="activeAuthTab === 'login'"
+            (click)="setTab('login')"
+          >
+            Iniciar Sesión
+          </button>
+          <button
+            type="button"
+            class="auth-tab-btn"
+            [class.active]="activeAuthTab === 'register'"
+            (click)="setTab('register')"
+          >
+            Crear Cuenta
+          </button>
+          <button
+            type="button"
+            class="auth-tab-btn"
+            [class.active]="activeAuthTab === 'recovery'"
+            (click)="setTab('recovery')"
+          >
+            Recuperar
+          </button>
+        </nav>
 
-          <!-- Campo Contraseña -->
-          <div class="form-input-group">
-            <label for="userPass">Contraseña</label>
-            <div class="input-line-wrapper password-wrapper">
-              <input
-                id="userPass"
-                name="password"
-                [type]="showPassword ? 'text' : 'password'"
-                [(ngModel)]="password"
-                placeholder="••••••••"
-                autocomplete="current-password"
-                required
-              />
+        <!-- ==================== PESTAÑA 1: INICIO DE SESIÓN ==================== -->
+        @if (activeAuthTab === 'login') {
+          <form class="auth-form" (ngSubmit)="onSubmit()" #loginForm="ngForm">
+            <!-- Campo Correo -->
+            <div class="form-input-group">
+              <label for="userEmail">Correo electrónico institucional</label>
+              <div class="input-line-wrapper">
+                <input
+                  id="userEmail"
+                  name="email"
+                  type="email"
+                  [(ngModel)]="email"
+                  placeholder="usuario@alumnos.uaq.mx o @uaq.mx"
+                  autocomplete="username"
+                  required
+                />
+              </div>
+              <small class="field-hint">
+                Usa tu correo institucional (@uaq.mx o @alumnos.uaq.mx)
+              </small>
+            </div>
+
+            <!-- Campo Contraseña -->
+            <div class="form-input-group">
+              <label for="userPass">Contraseña</label>
+              <div class="input-line-wrapper password-wrapper">
+                <input
+                  id="userPass"
+                  name="password"
+                  [type]="showPassword ? 'text' : 'password'"
+                  [(ngModel)]="password"
+                  placeholder="••••••••"
+                  autocomplete="current-password"
+                  required
+                />
+                <button
+                  type="button"
+                  class="btn-toggle-pass"
+                  (click)="showPassword = !showPassword"
+                >
+                  {{ showPassword ? 'Ocultar' : 'Mostrar' }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Alertas -->
+            @if (message) {
+              <div class="login-alert-error" role="alert">
+                <span>{{ message }}</span>
+              </div>
+            }
+            @if (successMessage) {
+              <div class="login-alert-success" role="alert">
+                <span>{{ successMessage }}</span>
+              </div>
+            }
+
+            <div class="form-actions-row">
+              <button type="submit" class="btn-login-submit" [disabled]="isLoading">
+                {{ isLoading ? 'INGRESANDO...' : 'INICIAR SESIÓN' }}
+              </button>
               <button
                 type="button"
-                class="btn-toggle-pass"
-                (click)="showPassword = !showPassword"
-                [attr.aria-label]="showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                class="btn-text-link"
+                (click)="setTab('recovery')"
               >
-                {{ showPassword ? 'Ocultar' : 'Mostrar' }}
+                ¿Olvidaste tu contraseña?
               </button>
             </div>
-          </div>
+          </form>
+        }
 
-          <!-- Alerta de Validación / Error -->
-          @if (message) {
-            <div class="login-alert-error" role="alert">
-              <span>{{ message }}</span>
+        <!-- ==================== PESTAÑA 2: REGISTRO DE ESTUDIANTE ==================== -->
+        @if (activeAuthTab === 'register') {
+          <form class="auth-form" (ngSubmit)="onRegisterSubmit()" #regForm="ngForm">
+            <div class="form-row-2col">
+              <div class="form-input-group">
+                <label for="regNombre">Nombre(s)</label>
+                <div class="input-line-wrapper">
+                  <input
+                    id="regNombre"
+                    name="regNombre"
+                    type="text"
+                    [(ngModel)]="regNombre"
+                    placeholder="Ana"
+                    required
+                  />
+                </div>
+              </div>
+              <div class="form-input-group">
+                <label for="regApellidos">Apellidos</label>
+                <div class="input-line-wrapper">
+                  <input
+                    id="regApellidos"
+                    name="regApellidos"
+                    type="text"
+                    [(ngModel)]="regApellidos"
+                    placeholder="Martínez Delgado"
+                    required
+                  />
+                </div>
+              </div>
             </div>
-          }
 
-          <!-- Botón de Inicio de Sesión Institucional -->
-          <button type="submit" class="btn-login-submit">
-            INICIAR SESIÓN
-          </button>
-        </form>
+            <div class="form-input-group">
+              <label for="regEmail">Correo Institucional Estudiantil</label>
+              <div class="input-line-wrapper">
+                <input
+                  id="regEmail"
+                  name="regEmail"
+                  type="email"
+                  [(ngModel)]="regEmail"
+                  placeholder="ana.martinez@alumnos.uaq.mx"
+                  required
+                />
+              </div>
+              <small class="field-hint">Exclusivo para terminación &#64;alumnos.uaq.mx</small>
+            </div>
+
+            <div class="form-row-2col">
+              <div class="form-input-group">
+                <label for="regExpediente">N° Expediente</label>
+                <div class="input-line-wrapper">
+                  <input
+                    id="regExpediente"
+                    name="regExpediente"
+                    type="text"
+                    [(ngModel)]="regExpediente"
+                    placeholder="298412"
+                    required
+                  />
+                </div>
+              </div>
+              <div class="form-input-group">
+                <label for="regSemestre">Semestre</label>
+                <div class="input-line-wrapper select-wrapper">
+                  <select
+                    id="regSemestre"
+                    name="regSemestre"
+                    [(ngModel)]="regSemestre"
+                  >
+                    @for (s of [1, 2, 3, 4, 5, 6, 7, 8, 9]; track s) {
+                      <option [value]="s">{{ s }}° Semestre</option>
+                    }
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-input-group">
+              <label for="regCarreraId">Carrera (Facultad de Informática)</label>
+              <div class="input-line-wrapper select-wrapper">
+                <select
+                  id="regCarreraId"
+                  name="regCarreraId"
+                  [(ngModel)]="regCarreraId"
+                  required
+                >
+                  @for (c of carrerasList; track c.id) {
+                    <option [value]="c.id">{{ c.nombre }} ({{ c.clave }})</option>
+                  }
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row-2col">
+              <div class="form-input-group">
+                <label for="regPassword">Contraseña</label>
+                <div class="input-line-wrapper">
+                  <input
+                    id="regPassword"
+                    name="regPassword"
+                    [type]="showRegPassword ? 'text' : 'password'"
+                    [(ngModel)]="regPassword"
+                    placeholder="Mínimo 6 caracteres"
+                    required
+                  />
+                </div>
+              </div>
+              <div class="form-input-group">
+                <label for="regPasswordConfirm">Confirmar</label>
+                <div class="input-line-wrapper">
+                  <input
+                    id="regPasswordConfirm"
+                    name="regPasswordConfirm"
+                    [type]="showRegPassword ? 'text' : 'password'"
+                    [(ngModel)]="regPasswordConfirm"
+                    placeholder="Repite tu contraseña"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
+            @if (message) {
+              <div class="login-alert-error" role="alert">
+                <span>{{ message }}</span>
+              </div>
+            }
+
+            <div class="form-actions-row">
+              <button type="submit" class="btn-login-submit" [disabled]="isLoading">
+                {{ isLoading ? 'CREANDO CUENTA...' : 'CREAR CUENTA' }}
+              </button>
+              <button
+                type="button"
+                class="btn-text-link"
+                (click)="setTab('login')"
+              >
+                ¿Ya tienes cuenta? Inicia sesión
+              </button>
+            </div>
+          </form>
+        }
+
+        <!-- ==================== PESTAÑA 3: RECUPERACIÓN DE CONTRASEÑA ==================== -->
+        @if (activeAuthTab === 'recovery') {
+          <div class="auth-form">
+            @if (recStep === 1) {
+              <div class="form-input-group">
+                <label for="recEmail">Ingresa tu correo institucional registrado</label>
+                <div class="input-line-wrapper">
+                  <input
+                    id="recEmail"
+                    name="recEmail"
+                    type="email"
+                    [(ngModel)]="recEmail"
+                    placeholder="usuario@alumnos.uaq.mx o @uaq.mx"
+                    required
+                  />
+                </div>
+                <small class="field-hint">
+                  Te generaremos un token seguro para restablecer tu contraseña.
+                </small>
+              </div>
+
+              @if (message) {
+                <div class="login-alert-error" role="alert">
+                  <span>{{ message }}</span>
+                </div>
+              }
+
+              <div class="form-actions-row">
+                <button
+                  type="button"
+                  class="btn-login-submit"
+                  [disabled]="isLoading"
+                  (click)="onRequestRecoveryToken()"
+                >
+                  {{ isLoading ? 'SOLICITANDO...' : 'SOLICITAR TOKEN' }}
+                </button>
+                <button
+                  type="button"
+                  class="btn-text-link"
+                  (click)="recStep = 2"
+                >
+                  Ya tengo un token
+                </button>
+              </div>
+            } @else {
+              @if (generatedTokenHint) {
+                <div class="token-banner">
+                  <span class="token-title">Token de verificación generado:</span>
+                  <code class="token-code">{{ generatedTokenHint }}</code>
+                  <small>Copia este código y pégalo a continuación.</small>
+                </div>
+              }
+
+              <div class="form-input-group">
+                <label for="recToken">Token de recuperación</label>
+                <div class="input-line-wrapper">
+                  <input
+                    id="recToken"
+                    name="recToken"
+                    type="text"
+                    [(ngModel)]="recToken"
+                    placeholder="Código de 32 o 64 caracteres"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div class="form-input-group">
+                <label for="recPassword">Nueva Contraseña</label>
+                <div class="input-line-wrapper">
+                  <input
+                    id="recPassword"
+                    name="recPassword"
+                    type="password"
+                    [(ngModel)]="recPassword"
+                    placeholder="Mínimo 6 caracteres"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div class="form-input-group">
+                <label for="recPasswordConfirm">Confirmar Nueva Contraseña</label>
+                <div class="input-line-wrapper">
+                  <input
+                    id="recPasswordConfirm"
+                    name="recPasswordConfirm"
+                    type="password"
+                    [(ngModel)]="recPasswordConfirm"
+                    placeholder="Repite la nueva contraseña"
+                    required
+                  />
+                </div>
+              </div>
+
+              @if (message) {
+                <div class="login-alert-error" role="alert">
+                  <span>{{ message }}</span>
+                </div>
+              }
+              @if (successMessage) {
+                <div class="login-alert-success" role="alert">
+                  <span>{{ successMessage }}</span>
+                </div>
+              }
+
+              <div class="form-actions-row">
+                <button
+                  type="button"
+                  class="btn-login-submit"
+                  [disabled]="isLoading"
+                  (click)="onResetPasswordSubmit()"
+                >
+                  {{ isLoading ? 'RESTABLECIENDO...' : 'RESTABLECER' }}
+                </button>
+                <button
+                  type="button"
+                  class="btn-text-link"
+                  (click)="recStep = 1"
+                >
+                  Solicitar otro token
+                </button>
+              </div>
+            }
+          </div>
+        }
 
         <footer class="login-footer">
-          <span>Repositorio Académico Institucional</span>
+          <span>Repositorio Académico Institucional — FIF UAQ 2026</span>
         </footer>
       </div>
     </section>
@@ -97,6 +408,13 @@
     <!-- Panel Derecho: Fotografía Limpia de las Instalaciones con Overlay Azul Marino -->
     <div class="visual-panel" aria-hidden="true">
       <div class="visual-overlay"></div>
+      <div class="visual-content">
+        <span class="motto-tag">FACULTAD DE INFORMÁTICA</span>
+        <h2>"Educo en la Verdad y en el Honor"</h2>
+        <p>
+          Espacio oficial para la consulta, preservación y discusión de materiales académicos de las 7 carreras de la FIF.
+        </p>
+      </div>
     </div>
   </div>
 }

@@ -7,8 +7,10 @@ import {
   Param,
   Body,
   Query,
+  Req,
   ParseIntPipe,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { CommentsService } from './comments.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
@@ -18,6 +20,23 @@ import { ReportCommentDto } from './dto/report-comment.dto';
 @Controller()
 export class CommentsController {
   constructor(private readonly commentsService: CommentsService) {}
+
+  /**
+   * Obtiene notificaciones de respuestas a comentarios del usuario autenticado
+   * GET /api/comments/notifications/me
+   */
+  @Get('comments/notifications/me')
+  async obtenerNotificaciones(
+    @Query('userId', ParseIntPipe) userId: number,
+  ) {
+    const notificaciones = await this.commentsService.obtenerNotificaciones(userId);
+    return {
+      success: true,
+      total: notificaciones.length,
+      data: notificaciones,
+      timestamp: new Date().toISOString(),
+    };
+  }
 
   /**
    * Obtiene todos los comentarios e hilos de respuestas de un archivo académico

@@ -119,6 +119,7 @@ model Usuario {
   materias_profesores MateriasProfesor[]
   carpetas            Carpeta[]
   archivos            Archivo[]
+  archivos_guardados  ArchivoGuardado[]
   comentarios         Comentario[]
   comentarios_likes   ComentarioLike[]
   reportes_hechos     ReporteComentario[] @relation("Reportante")
@@ -246,11 +247,25 @@ model Archivo {
 
   comentarios Comentario[]
   revisiones  RevisionArchivo[]
+  guardados   ArchivoGuardado[]
 
   @@index([materia_id], name: "archivos_materia_id_idx")
   @@index([docente_id], name: "archivos_docente_id_idx")
   @@index([carpeta_id], name: "archivos_carpeta_id_idx")
   @@map("archivos")
+}
+
+/// Materiales guardados o favoritos por los estudiantes
+model ArchivoGuardado {
+  usuario_id Int
+  archivo_id Int
+  creado_en  DateTime @default(now())
+
+  usuario Usuario @relation(fields: [usuario_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  archivo Archivo @relation(fields: [archivo_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([usuario_id, archivo_id])
+  @@map("archivos_guardados")
 }
 
 // ─── COMENTARIOS ─────────────────────────────────────────────

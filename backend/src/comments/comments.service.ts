@@ -58,10 +58,9 @@ export class CommentsService {
     const primerEstudiante = await this.prisma.usuario.findFirst({ where: { rol_id: 1 } });
     if (primerEstudiante) return primerEstudiante.id;
 
-    // Cualquier usuario en la base de datos
     const userFallback = await this.prisma.usuario.findFirst();
     if (!userFallback) {
-      throw new NotFoundException('No hay usuarios en la base de datos para atribuir el comentario.');
+      throw new NotFoundException('No hay usuarios en la BD para atribuir el comentario.');
     }
     return userFallback.id;
   }
@@ -69,7 +68,11 @@ export class CommentsService {
   /**
    * Mapea el registro relacional al formato DocumentComment esperado por el frontend
    */
-  private mapToDocumentComment(c: any, currentUserId?: number): any {
+  private mapToDocumentComment(
+    c: any,
+    currentUserId?: number,
+    docentesTitularesIds: number[] = [],
+  ): any {
     const nombreCompleto = c.autor
       ? `${c.autor.nombre} ${c.autor.apellidos}`.trim()
       : 'Usuario UAQ';
@@ -86,20 +89,26 @@ export class CommentsService {
         : `${298400 + c.autor.id}`
       : '298412';
 
+    const isDocenteTitular =
+      c.autor?.rol_id === 2 && docentesTitularesIds.includes(c.autor_id);
+
     const likesCount = c.likes ? c.likes.length : 0;
     const userLiked = currentUserId
       ? (c.likes || []).some((l: any) => l.usuario_id === currentUserId)
       : false;
 
     const replies = (c.respuestas || []).map((r: any) =>
-      this.mapToDocumentComment(r, currentUserId),
+      this.mapToDocumentComment(r, currentUserId, docentesTitularesIds),
     );
 
     return {
       id: String(c.id),
       authorName: nombreCompleto,
       authorInitials: initials,
-      authorRole: c.autor?.rol?.nombre || 'Estudiante',
+      authorRole: isDocenteTitular
+        ? 'Docente Titular'
+        : c.autor?.rol?.nombre || 'Estudiante',
+      isDocenteTitular,
       authorExpediente: expediente,
       timestamp: this.formatearFecha(c.creado_en),
       content: c.contenido,
@@ -116,10 +125,25 @@ export class CommentsService {
    * Obtiene todos los comentarios en árbol para un documento académico
    */
   async obtenerPorArchivo(archivoId: number, usuarioId?: number): Promise<any[]> {
+    // 1. Obtener materia del archivo para determinar docentes titulares
+    const archivo = await this.prisma.archivo.findUnique({
+      where: { id: archivoId },
+      select: { materia_id: true },
+    });
+
+    let docentesTitularesIds: number[] = [];
+    if (archivo) {
+      const asignaciones = await this.prisma.materiasProfesor.findMany({
+        where: { materia_id: archivo.materia_id },
+        select: { profesor_id: true },
+      });
+      docentesTitularesIds = asignaciones.map((a) => a.profesor_id);
+    }
+
     const comentarios = await this.prisma.comentario.findMany({
       where: {
         archivo_id: archivoId,
-        padre_id: null, // Solo comentarios raíz
+        padre_id: null,
       },
       include: {
         autor: { include: { rol: true } },
@@ -137,7 +161,9 @@ export class CommentsService {
       orderBy: { creado_en: 'asc' },
     });
 
-    return comentarios.map((c) => this.mapToDocumentComment(c, usuarioId));
+    return comentarios.map((c) =>
+      this.mapToDocumentComment(c, usuarioId, docentesTitularesIds),
+    );
   }
 
   /**
@@ -274,5 +300,45 @@ export class CommentsService {
       success: true,
       message: 'Comentario reportado para moderación académica.',
     };
+  }
+
+  /**
+   * Obtiene notificaciones de respuestas para un usuario (docentes o compañeros que respondieron)
+   */
+  async obtenerNotificaciones(usuarioId: number): Promise<any[]> {
+    // Respuestas a comentarios donde padre.autor_id == usuarioId y autor_id != usuarioId
+    const respuestas = await this.prisma.comentario.findMany({
+      where: {
+        padre: {
+          autor_id: usuarioId,
+        },
+        autor_id: {
+          not: usuarioId,
+        },
+        estado: 'VISIBLE',
+      },
+      include: {
+        autor: { include: { rol: true } },
+        archivo: {
+          select: { id: true, titulo: true },
+        },
+        padre: {
+          select: { contenido: true },
+        },
+      },
+      orderBy: { creado_en: 'desc' },
+      take: 20,
+    });
+
+    return respuestas.map((r) => ({
+      id: r.id,
+      archivoId: r.archivo_id,
+      archivoTitulo: r.archivo.titulo,
+      remitenteNombre: `${r.autor.nombre} ${r.autor.apellidos}`.trim(),
+      remitenteRol: r.autor.rol.nombre,
+      contenidoRespuesta: r.contenido,
+      tuComentario: r.padre?.contenido || '',
+      fecha: this.formatearFecha(r.creado_en),
+    }));
   }
 }

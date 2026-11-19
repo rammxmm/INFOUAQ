@@ -16,13 +16,18 @@ export interface BackendAcademicFile {
   tamanoFormateado: string;
   carreraId: string;
   materia: string;
+  materiaId?: number;
   semestre: number;
   categoria: string;
+  parcial?: number | null;
+  carpetaId?: number | null;
   autorNombre: string;
   autorRol: string;
+  docenteId?: number;
   descargas: number;
   fechaSubida: string;
   fechaActualizacion: string;
+  isBookmarked?: boolean;
 }
 
 export interface ApiResponse<T> {
@@ -58,12 +63,13 @@ export function mapBackendToFrontendDoc(f: BackendAcademicFile): AcademicDocumen
     date: dateFormatted,
     color: type.toLowerCase(),
     size: f.tamanoFormateado || `${(f.tamanoBytes / (1024 * 1024)).toFixed(1)} MB`,
-    unit: `Semestre ${f.semestre || 1}`,
+    unit: f.parcial ? `Parcial ${f.parcial}` : `Semestre ${f.semestre || 1}`,
     category: (f.categoria as any) || 'Guías',
     downloads: f.descargas || 0,
     author: f.autorNombre || 'Comunidad Académica UAQ',
     description: f.descripcion || f.titulo,
     comments: [],
+    isBookmarked: Boolean(f.isBookmarked),
   };
 }
 
@@ -84,6 +90,7 @@ export class FileService {
     semestre?: number;
     categoria?: string;
     busqueda?: string;
+    userId?: number;
   }): Observable<AcademicDocument[]> {
     let params = new HttpParams();
 
@@ -103,6 +110,9 @@ export class FileService {
       if (filters.busqueda && filters.busqueda.trim()) {
         params = params.set('busqueda', filters.busqueda.trim());
       }
+      if (filters.userId) {
+        params = params.set('userId', filters.userId.toString());
+      }
     }
 
     return this.http
@@ -113,9 +123,11 @@ export class FileService {
   /**
    * Obtiene el detalle de un documento por su ID
    */
-  getFileById(id: string): Observable<AcademicDocument> {
+  getFileById(id: string, userId?: number): Observable<AcademicDocument> {
+    let params = new HttpParams();
+    if (userId) params = params.set('userId', userId.toString());
     return this.http
-      .get<ApiResponse<BackendAcademicFile>>(`${this.apiUrl}/${id}`)
+      .get<ApiResponse<BackendAcademicFile>>(`${this.apiUrl}/${id}`, { params })
       .pipe(map((res) => mapBackendToFrontendDoc(res.data)));
   }
 
@@ -129,8 +141,11 @@ export class FileService {
       descripcion?: string;
       carreraId: string;
       materia: string;
+      materia_id?: number;
       semestre: number;
       categoria: string;
+      parcial?: number;
+      carpeta_id?: number;
       autorNombre?: string;
       autorRol?: string;
     },
@@ -143,19 +158,64 @@ export class FileService {
     formData.append('semestre', String(meta.semestre));
     formData.append('categoria', meta.categoria);
 
-    if (meta.descripcion) {
-      formData.append('descripcion', meta.descripcion);
-    }
-    if (meta.autorNombre) {
-      formData.append('autorNombre', meta.autorNombre);
-    }
-    if (meta.autorRol) {
-      formData.append('autorRol', meta.autorRol);
-    }
+    if (meta.materia_id) formData.append('materia_id', String(meta.materia_id));
+    if (meta.parcial) formData.append('parcial', String(meta.parcial));
+    if (meta.carpeta_id) formData.append('carpeta_id', String(meta.carpeta_id));
+    if (meta.descripcion) formData.append('descripcion', meta.descripcion);
+    if (meta.autorNombre) formData.append('autorNombre', meta.autorNombre);
+    if (meta.autorRol) formData.append('autorRol', meta.autorRol);
 
     return this.http
       .post<ApiResponse<BackendAcademicFile>>(`${this.apiUrl}/upload`, formData)
       .pipe(map((res) => mapBackendToFrontendDoc(res.data)));
+  }
+
+  /**
+   * Actualiza metadatos y opcionalmente sustituye el archivo
+   */
+  updateFile(
+    id: string,
+    meta: {
+      titulo?: string;
+      descripcion?: string;
+      categoria?: string;
+      parcial?: number;
+      carpeta_id?: number;
+    },
+    file?: File,
+  ): Observable<AcademicDocument> {
+    const formData = new FormData();
+    if (meta.titulo) formData.append('titulo', meta.titulo);
+    if (meta.descripcion) formData.append('descripcion', meta.descripcion);
+    if (meta.categoria) formData.append('categoria', meta.categoria);
+    if (meta.parcial) formData.append('parcial', String(meta.parcial));
+    if (meta.carpeta_id) formData.append('carpeta_id', String(meta.carpeta_id));
+    if (file) formData.append('file', file);
+
+    return this.http
+      .patch<ApiResponse<BackendAcademicFile>>(`${this.apiUrl}/${id}`, formData)
+      .pipe(map((res) => mapBackendToFrontendDoc(res.data)));
+  }
+
+  /**
+   * Alterna guardado en favoritos de un archivo
+   */
+  toggleBookmark(id: string, userId?: number): Observable<{ saved: boolean; message: string }> {
+    return this.http.post<{ success: boolean; data: { saved: boolean }; message: string }>(
+      `${this.apiUrl}/${id}/bookmark`,
+      { userId },
+    ).pipe(map((res) => ({ saved: res.data?.saved ?? false, message: res.message })));
+  }
+
+  /**
+   * Obtiene todos los archivos guardados por el estudiante
+   */
+  getBookmarks(userId?: number): Observable<AcademicDocument[]> {
+    let params = new HttpParams();
+    if (userId) params = params.set('userId', userId.toString());
+    return this.http
+      .get<ApiResponse<BackendAcademicFile[]>>(`${this.apiUrl}/bookmarks/me`, { params })
+      .pipe(map((res) => (res.data || []).map(mapBackendToFrontendDoc)));
   }
 
   /**
@@ -183,7 +243,6 @@ export class FileService {
         window.URL.revokeObjectURL(url);
       },
       error: () => {
-        // Enlace de respaldo directo si falla blob
         window.open(`${this.apiUrl}/${id}/download`, '_blank');
       },
     });

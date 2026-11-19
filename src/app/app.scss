@@ -109,11 +109,125 @@
   }
 }
 
+/* Pestañas de Autenticación */
+.auth-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  border-bottom: 2px solid #EDF1F5;
+  padding-bottom: 2px;
+}
+
+.auth-tab-btn {
+  background: transparent;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -4px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #7E8D9F;
+  cursor: pointer;
+  transition: all 140ms ease;
+
+  &:hover {
+    color: #142D4E;
+  }
+
+  &.active {
+    color: #142D4E;
+    border-bottom-color: #142D4E;
+  }
+}
+
 /* Formulario */
 .auth-form {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
+}
+
+.form-row-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.select-wrapper {
+  select {
+    width: 100%;
+    height: 40px;
+    padding: 0 4px;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    font-size: 13px;
+    color: #142D4E;
+    cursor: pointer;
+  }
+}
+
+.form-actions-row {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+  margin-top: 8px;
+}
+
+.btn-text-link {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #142D4E;
+  cursor: pointer;
+  text-decoration: underline;
+
+  &:hover {
+    color: #1C3E6A;
+  }
+}
+
+.login-alert-success {
+  padding: 8px 12px;
+  border-left: 3px solid #10B981;
+  background: #ECFDF5;
+  color: #065F46;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.token-banner {
+  padding: 12px;
+  background: #F1F5F9;
+  border: 1px dashed #CBD5E1;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  .token-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: #334155;
+    text-transform: uppercase;
+  }
+
+  .token-code {
+    font-family: monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: #0284C7;
+    word-break: break-all;
+    user-select: all;
+  }
+
+  small {
+    font-size: 11px;
+    color: #64748B;
+  }
 }
 
 .form-input-group {

@@ -3,15 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AcademicFile } from './entities/academic-file.entity';
 
 /**
- * FilesRepository — Acceso a datos de documentos académicos.
- *
- * Implementación con Prisma ORM sobre la tabla "archivos" (PostgreSQL 16).
- * Se adapta al diseño relacional institucional de 17 tablas:
- * - Tabla principal: "archivos"
- * - Relaciones: "materias", "materias_carreras", "carreras", "usuarios", "roles"
- *
- * Mantiene compatibilidad con la interfaz AcademicFile para no romper
- * la comunicación con el frontend Angular.
+ * FilesRepository — Acceso a datos de documentos académicos con Prisma ORM (PostgreSQL).
  */
 @Injectable()
 export class FilesRepository {
@@ -32,7 +24,7 @@ export class FilesRepository {
   /**
    * Helper: mapea un registro relacional de Prisma al contrato AcademicFile
    */
-  private mapToEntity(record: any): AcademicFile {
+  private mapToEntity(record: any, isBookmarked = false): AcademicFile {
     const carreraRel = record.materia?.materias_carreras?.[0];
     const carreraClave = carreraRel?.carrera?.clave || 'GENERAL';
     const semestre = carreraRel?.semestre || 1;
@@ -63,17 +55,25 @@ export class FilesRepository {
       tamanoFormateado: this.formatearTamano(tamanoNum),
       carreraId: carreraClave,
       materia: record.materia?.nombre || 'General',
+      materiaId: record.materia_id,
       semestre,
       categoria: record.tema || 'Guías',
+      parcial: record.parcial ?? null,
+      carpetaId: record.carpeta_id ?? null,
       autorNombre: docenteNombre,
       autorRol: docenteRol,
+      docenteId: record.docente_id,
       descargas: record.descargas || 0,
-      fechaSubida: record.creado_en instanceof Date
-        ? record.creado_en.toISOString()
-        : String(record.creado_en),
-      fechaActualizacion: record.actualizado_en instanceof Date
-        ? record.actualizado_en.toISOString()
-        : String(record.actualizado_en),
+      fechaSubida:
+        record.creado_en instanceof Date
+          ? record.creado_en.toISOString()
+          : String(record.creado_en),
+      fechaActualizacion:
+        record.actualizado_en instanceof Date
+          ? record.actualizado_en.toISOString()
+          : String(record.actualizado_en),
+      isBookmarked:
+        isBookmarked || (record.guardados && record.guardados.length > 0) || false,
     };
   }
 
@@ -116,20 +116,22 @@ export class FilesRepository {
     });
 
     if (carrera) {
-      await this.prisma.materiasCarrera.upsert({
-        where: {
-          materia_id_carrera_id: {
+      await this.prisma.materiasCarrera
+        .upsert({
+          where: {
+            materia_id_carrera_id: {
+              materia_id: materia.id,
+              carrera_id: carrera.id,
+            },
+          },
+          update: { semestre },
+          create: {
             materia_id: materia.id,
             carrera_id: carrera.id,
+            semestre,
           },
-        },
-        update: { semestre },
-        create: {
-          materia_id: materia.id,
-          carrera_id: carrera.id,
-          semestre,
-        },
-      }).catch(() => {});
+        })
+        .catch(() => {});
     }
 
     return materia.id;
@@ -139,7 +141,6 @@ export class FilesRepository {
    * Resuelve o asigna el ID del docente propietario
    */
   private async resolverDocenteId(autorNombre?: string): Promise<number> {
-    // 1. Si se especificó nombre, intentar ubicar al usuario existente
     if (autorNombre && autorNombre.trim()) {
       const partes = autorNombre.trim().split(' ');
       const primerNombre = partes[0];
@@ -156,7 +157,6 @@ export class FilesRepository {
       }
     }
 
-    // 2. Docente profesor por defecto (Carlos Ramírez Peña del seed)
     const profesorDefault = await this.prisma.usuario.findFirst({
       where: { rol_id: 2 }, // Profesor
     });
@@ -165,10 +165,9 @@ export class FilesRepository {
       return profesorDefault.id;
     }
 
-    // 3. Si no hay docentes, obtener el primer usuario disponible
     const primerUsuario = await this.prisma.usuario.findFirst();
     if (!primerUsuario) {
-      throw new Error('No existen usuarios en la base de datos para asignar como propietario del archivo.');
+      throw new Error('No existen usuarios en la BD para asignar como propietario del archivo.');
     }
     return primerUsuario.id;
   }
@@ -176,7 +175,7 @@ export class FilesRepository {
   /**
    * Obtiene todos los archivos académicos con sus relaciones
    */
-  async obtenerTodos(): Promise<AcademicFile[]> {
+  async obtenerTodos(userId?: number): Promise<AcademicFile[]> {
     try {
       const registros = await this.prisma.archivo.findMany({
         include: {
@@ -190,6 +189,7 @@ export class FilesRepository {
           docente: {
             include: { rol: true },
           },
+          guardados: userId ? { where: { usuario_id: userId } } : false,
         },
         orderBy: { creado_en: 'desc' },
       });
@@ -203,7 +203,7 @@ export class FilesRepository {
   /**
    * Busca un archivo académico por ID
    */
-  async obtenerPorId(id: string): Promise<AcademicFile | null> {
+  async obtenerPorId(id: string, userId?: number): Promise<AcademicFile | null> {
     const numId = parseInt(id, 10);
     if (isNaN(numId)) {
       return null;
@@ -223,6 +223,7 @@ export class FilesRepository {
           docente: {
             include: { rol: true },
           },
+          guardados: userId ? { where: { usuario_id: userId } } : false,
         },
       });
       return registro ? this.mapToEntity(registro) : null;
@@ -233,21 +234,47 @@ export class FilesRepository {
   }
 
   /**
-   * Guarda un nuevo archivo en PostgreSQL resolviendo materia y docente
+   * Obtiene el registro puro de Prisma para validación de permisos
    */
-  async guardar(nuevo: AcademicFile): Promise<AcademicFile> {
-    const materiaId = await this.resolverMateriaId(
-      nuevo.materia,
-      nuevo.carreraId,
-      nuevo.semestre,
-    );
+  async obtenerRegistroPuro(id: number) {
+    return this.prisma.archivo.findUnique({
+      where: { id },
+      include: {
+        docente: { include: { rol: true } },
+      },
+    });
+  }
 
-    const docenteId = await this.resolverDocenteId(nuevo.autorNombre);
+  /**
+   * Guarda un nuevo archivo en PostgreSQL
+   */
+  async guardar(
+    nuevo: AcademicFile,
+    materiaIdExplicit?: number,
+    docenteIdExplicit?: number,
+    parcial?: number,
+    carpetaId?: number,
+  ): Promise<AcademicFile> {
+    let materiaId = materiaIdExplicit;
+    if (!materiaId) {
+      materiaId = await this.resolverMateriaId(
+        nuevo.materia,
+        nuevo.carreraId,
+        nuevo.semestre,
+      );
+    }
+
+    let docenteId = docenteIdExplicit;
+    if (!docenteId) {
+      docenteId = await this.resolverDocenteId(nuevo.autorNombre);
+    }
 
     const registro = await this.prisma.archivo.create({
       data: {
         titulo: nuevo.titulo,
         tema: nuevo.categoria,
+        parcial: parcial ?? null,
+        carpeta_id: carpetaId ?? null,
         nombre_original: nuevo.nombreOriginal,
         ruta_almacen: nuevo.rutaRelativa,
         tamano_bytes: BigInt(nuevo.tamanoBytes),
@@ -275,9 +302,21 @@ export class FilesRepository {
   }
 
   /**
-   * Actualiza metadatos de un archivo existente
+   * Actualiza metadatos de un archivo existente (y opcionalmente nuevo archivo)
    */
-  async actualizar(id: string, datos: Partial<AcademicFile>): Promise<AcademicFile | null> {
+  async actualizar(
+    id: string,
+    datos: {
+      titulo?: string;
+      categoria?: string;
+      parcial?: number;
+      carpeta_id?: number;
+      nombreOriginal?: string;
+      rutaRelativa?: string;
+      tamanoBytes?: number;
+      mimeType?: string;
+    },
+  ): Promise<AcademicFile | null> {
     const numId = parseInt(id, 10);
     if (isNaN(numId)) {
       return null;
@@ -285,8 +324,14 @@ export class FilesRepository {
 
     try {
       const updateData: any = {};
-      if (datos.titulo) updateData.titulo = datos.titulo;
-      if (datos.categoria) updateData.tema = datos.categoria;
+      if (datos.titulo !== undefined) updateData.titulo = datos.titulo;
+      if (datos.categoria !== undefined) updateData.tema = datos.categoria;
+      if (datos.parcial !== undefined) updateData.parcial = datos.parcial;
+      if (datos.carpeta_id !== undefined) updateData.carpeta_id = datos.carpeta_id;
+      if (datos.nombreOriginal) updateData.nombre_original = datos.nombreOriginal;
+      if (datos.rutaRelativa) updateData.ruta_almacen = datos.rutaRelativa;
+      if (datos.tamanoBytes) updateData.tamano_bytes = BigInt(datos.tamanoBytes);
+      if (datos.mimeType) updateData.mime_type = datos.mimeType;
 
       const registro = await this.prisma.archivo.update({
         where: { id: numId },
@@ -348,6 +393,95 @@ export class FilesRepository {
     } catch (error) {
       this.logger.warn(`Error al eliminar archivo ${id}: ${error}`);
       return false;
+    }
+  }
+
+  /**
+   * Alterna el guardado en favoritos de un estudiante
+   */
+  async toggleBookmark(archivoId: number, usuarioId: number): Promise<{ saved: boolean }> {
+    const existente = await this.prisma.archivoGuardado.findUnique({
+      where: {
+        usuario_id_archivo_id: {
+          usuario_id: usuarioId,
+          archivo_id: archivoId,
+        },
+      },
+    });
+
+    if (existente) {
+      await this.prisma.archivoGuardado.delete({
+        where: {
+          usuario_id_archivo_id: {
+            usuario_id: usuarioId,
+            archivo_id: archivoId,
+          },
+        },
+      });
+      return { saved: false };
+    } else {
+      await this.prisma.archivoGuardado.create({
+        data: {
+          usuario_id: usuarioId,
+          archivo_id: archivoId,
+        },
+      });
+      return { saved: true };
+    }
+  }
+
+  /**
+   * Obtiene todos los archivos guardados por un estudiante
+   */
+  async obtenerGuardadosPorUsuario(usuarioId: number): Promise<AcademicFile[]> {
+    const guardados = await this.prisma.archivoGuardado.findMany({
+      where: { usuario_id: usuarioId },
+      include: {
+        archivo: {
+          include: {
+            materia: {
+              include: {
+                materias_carreras: {
+                  include: { carrera: true },
+                },
+              },
+            },
+            docente: {
+              include: { rol: true },
+            },
+          },
+        },
+      },
+      orderBy: { creado_en: 'desc' },
+    });
+
+    return guardados.map((g) => this.mapToEntity(g.archivo, true));
+  }
+
+  /**
+   * Registra una acción en la bitácora de auditoría
+   */
+  async registrarAuditoria(
+    usuarioId: number | null,
+    accion: string,
+    entidad: string,
+    entidadId: number | null,
+    detalle?: any,
+    ip?: string,
+  ) {
+    try {
+      await this.prisma.bitacoraAuditoria.create({
+        data: {
+          usuario_id: usuarioId,
+          accion,
+          entidad,
+          entidad_id: entidadId,
+          detalle: detalle ? (detalle as any) : undefined,
+          ip: ip || '127.0.0.1',
+        },
+      });
+    } catch (err) {
+      this.logger.warn(`No se pudo registrar en bitácora de auditoría: ${err}`);
     }
   }
 }

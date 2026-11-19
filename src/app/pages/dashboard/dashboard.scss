@@ -1833,3 +1833,251 @@ textarea.form-input {
     border-bottom: 1px solid #E2E6EA;
   }
 }
+
+/* ==========================================================================
+   VISOR PDF INSTITUCIONAL & EXTENSIONES DE ROLES
+   ========================================================================== */
+
+.pdf-iframe-viewer {
+  width: 100%;
+  height: 680px;
+  border: 1px solid #D2D8E0;
+  border-radius: 2px;
+  background: #FFFFFF;
+}
+
+.docente-titular-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  background: #142D4E;
+  color: #FFFFFF;
+  border-radius: 2px;
+  letter-spacing: 0.3px;
+}
+
+.btn-saved {
+  background: #FEF9C3 !important;
+  color: #854D0E !important;
+  border-color: #FACC15 !important;
+  font-weight: 700 !important;
+}
+
+.topbar-right-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-left: auto;
+}
+
+.notification-wrapper {
+  position: relative;
+}
+
+.btn-notification {
+  position: relative;
+  background: transparent;
+  border: 0;
+  color: #142D4E;
+  cursor: pointer;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .badge-count {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: #B91C1C;
+    color: #FFFFFF;
+    font-size: 10px;
+    font-weight: 700;
+    min-width: 16px;
+    height: 16px;
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    padding: 0 4px;
+  }
+}
+
+.notifications-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: 340px;
+  background: #FFFFFF;
+  border: 1px solid #D2D8E0;
+  box-shadow: 0 8px 24px rgba(20, 45, 78, 0.15);
+  border-radius: 4px;
+  z-index: 100;
+  padding: 12px;
+
+  .notif-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #E2E6EA;
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+    font-size: 12px;
+  }
+
+  .notif-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  .notif-item {
+    padding: 8px;
+    background: #F8FAFC;
+    border-left: 3px solid #142D4E;
+    font-size: 11px;
+
+    .notif-file {
+      margin: 2px 0;
+      color: #556578;
+    }
+
+    .notif-reply {
+      margin: 4px 0;
+      font-style: italic;
+      color: #142D4E;
+    }
+
+    small {
+      color: #94A3B8;
+    }
+  }
+
+  .notif-empty {
+    font-size: 12px;
+    color: #7E8D9F;
+    margin: 8px 0;
+    text-align: center;
+  }
+}
+
+.admin-subnav {
+  display: flex;
+  gap: 8px;
+  border-bottom: 2px solid #E2E6EA;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+
+  button {
+    background: transparent;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    padding: 8px 16px;
+    margin-bottom: -2px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #556578;
+    cursor: pointer;
+    transition: all 120ms ease;
+
+    &:hover {
+      color: #142D4E;
+    }
+
+    &.active {
+      color: #142D4E;
+      border-bottom-color: #142D4E;
+    }
+  }
+}
+
+.admin-tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.form-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  align-items: center;
+}
+
+.folders-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.folder-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid #D2D8E0;
+  border-radius: 4px;
+  background: #FFFFFF;
+  transition: border-color 140ms ease;
+
+  &:hover {
+    border-color: #142D4E;
+  }
+
+  .folder-icon {
+    font-size: 20px;
+  }
+
+  .folder-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    font-size: 12px;
+  }
+}
+
+.folder-create-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  input {
+    height: 34px;
+    padding: 0 10px;
+    border: 1px solid #D2D8E0;
+    border-radius: 2px;
+    font-size: 12px;
+    min-width: 240px;
+  }
+}
+
+.btn-icon-danger {
+  background: transparent;
+  border: 0;
+  color: #B91C1C;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px;
+
+  &:hover {
+    background: #FEE2E2;
+    border-radius: 2px;
+  }
+}
+
+.empty-hint {
+  font-size: 12px;
+  color: #7E8D9F;
+  margin-top: 8px;
+}
+

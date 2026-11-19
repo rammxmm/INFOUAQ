@@ -7,6 +7,9 @@ import { FilesModule } from './files/files.module';
 import { CommentsModule } from './comments/comments.module';
 import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { CatalogModule } from './catalog/catalog.module';
+import { FoldersModule } from './folders/folders.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -19,6 +22,9 @@ import { PrismaModule } from './prisma/prisma.module';
     FilesModule,
     CommentsModule,
     AuthModule,
+    CatalogModule,
+    FoldersModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],

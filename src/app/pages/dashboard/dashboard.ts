@@ -1,19 +1,27 @@
 import { Component, output, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FileService } from '../../services/file.service';
-import { CommentService } from '../../services/comment.service';
+import { CommentService, CommentNotification } from '../../services/comment.service';
 import { AuthService } from '../../services/auth.service';
+import { CatalogService, Carrera, MateriaCatalogo } from '../../services/catalog.service';
+import { FolderService, CarpetaItem } from '../../services/folder.service';
+import { AdminService, AdminUsuario, AdminReporte, AdminAuditoriaLog } from '../../services/admin.service';
 
-export type UserRole = 'Estudiante' | 'Profesor' | 'Administrador';
+export type UserRole = 'Estudiante' | 'Profesor' | 'Administrador' | 'ESTUDIANTE' | 'PROFESOR' | 'ADMINISTRADOR';
 
 export interface UserProfile {
+  id?: number;
   name: string;
   initials: string;
-  role: UserRole;
+  role: string;
   expediente: string;
   email: string;
+  carreraId?: number;
+  carreraClave?: string | null;
   carreraOrDept: string;
+  semestre?: number | null;
   semestreOrCargo: string;
   campus: string;
 }
@@ -22,7 +30,8 @@ export interface DocumentComment {
   id: string;
   authorName: string;
   authorInitials: string;
-  authorRole: UserRole;
+  authorRole: string;
+  isDocenteTitular?: boolean;
   authorExpediente: string;
   timestamp: string;
   content: string;
@@ -50,29 +59,22 @@ export interface AcademicDocument {
   author: string;
   description: string;
   comments: DocumentComment[];
+  isBookmarked?: boolean;
 }
 
 export interface Subject {
+  id?: number;
   name: string;
   code: string;
   teacher: string;
   progress: number;
   semester: number;
+  areaNombre?: string;
   units: {
     name: string;
     description: string;
     materialIds: string[];
   }[];
-}
-
-export interface InstitutionalUser {
-  id: string;
-  name: string;
-  email: string;
-  role: UserRole;
-  status: 'Activo' | 'Inactivo';
-  expediente: string;
-  registrationDate: string;
 }
 
 @Component({
@@ -86,6 +88,11 @@ export class Dashboard implements OnInit {
   private readonly fileService = inject(FileService);
   private readonly commentService = inject(CommentService);
   private readonly authService = inject(AuthService);
+  private readonly catalogService = inject(CatalogService);
+  private readonly folderService = inject(FolderService);
+  private readonly adminService = inject(AdminService);
+  private readonly sanitizer = inject(DomSanitizer);
+
   logout = output<void>();
 
   // Estado de carga y archivo adjunto para subida
@@ -98,6 +105,7 @@ export class Dashboard implements OnInit {
     | 'Inicio'
     | 'Materias'
     | 'Repositorio'
+    | 'Mis Guardados'
     | 'Detalle Documento'
     | 'Panel Docente'
     | 'Panel Administrador'
@@ -108,42 +116,24 @@ export class Dashboard implements OnInit {
   // Notificaciones y alertas
   actionFeedback: string | null = null;
 
-  // Catálogo de Perfiles para Simulación Institucional
-  profiles: Record<UserRole, UserProfile> = {
-    Estudiante: {
-      name: 'Ana Martínez Delgado',
-      initials: 'AM',
-      role: 'Estudiante',
-      expediente: '298412',
-      email: 'ana.martinez@alumnos.uaq.mx',
-      carreraOrDept: 'Licenciatura en Informática (Plan 2020)',
-      semestreOrCargo: '6° Semestre',
-      campus: 'Centro Universitario UAQ',
-    },
-    Profesor: {
-      name: 'Mtro. Carlos Ramírez Peña',
-      initials: 'CR',
-      role: 'Profesor',
-      expediente: 'DOC-1044',
-      email: 'carlos.ramirez@uaq.mx',
-      carreraOrDept: 'Área de Ciencias de la Computación',
-      semestreOrCargo: 'Profesor Titular de Asignatura',
-      campus: 'Facultad de Informática',
-    },
-    Administrador: {
-      name: 'Lic. Fernando Morales Aguilar',
-      initials: 'FM',
-      role: 'Administrador',
-      expediente: 'ADM-0042',
-      email: 'fernando.morales@uaq.mx',
-      carreraOrDept: 'Coordinación Administrativa y Sistemas',
-      semestreOrCargo: 'Administrador de Plataforma INFOUAQ',
-      campus: 'Centro Universitario UAQ',
-    },
+  currentUser: UserProfile = {
+    name: 'Estudiante UAQ',
+    initials: 'EQ',
+    role: 'ESTUDIANTE',
+    expediente: '298412',
+    email: 'estudiante@alumnos.uaq.mx',
+    carreraOrDept: 'Licenciatura en Informática',
+    semestreOrCargo: '6° Semestre',
+    campus: 'Centro Universitario UAQ',
   };
 
-  currentRole: UserRole = 'Estudiante';
-  currentUser: UserProfile = this.profiles['Estudiante'];
+  // Helper para normalizar rol a mayúsculas
+  get currentRoleNormalized(): 'ESTUDIANTE' | 'PROFESOR' | 'ADMINISTRADOR' {
+    const r = (this.currentUser.role || 'ESTUDIANTE').toUpperCase();
+    if (r.includes('ADMIN')) return 'ADMINISTRADOR';
+    if (r.includes('PROF') || r.includes('DOCENT')) return 'PROFESOR';
+    return 'ESTUDIANTE';
+  }
 
   // Búsqueda en Inicio
   searchTerm = '';
@@ -154,6 +144,9 @@ export class Dashboard implements OnInit {
   subjectSearch = '';
   selectedSemester = 'Todos';
   selectedStatus = 'Todas';
+  catalogMaterias: MateriaCatalogo[] = [];
+  carrerasList: Carrera[] = [];
+  selectedCarreraClave = 'Todas';
 
   // Repositorio de documentos
   repoSearch = '';
@@ -162,7 +155,15 @@ export class Dashboard implements OnInit {
   selectedRepoCategory = 'Todas';
   repoViewMode: 'list' | 'grid' = 'list';
 
-  // Pantalla de Detalle de Documento (con comentarios integrados)
+  // Documentos guardados / favoritos
+  bookmarkedDocuments: AcademicDocument[] = [];
+  isLoadingBookmarks = false;
+
+  // Notificaciones del estudiante
+  studentNotifications: CommentNotification[] = [];
+  showNotificationsModal = false;
+
+  // Pantalla de Detalle de Documento (con comentarios integrados y visor PDF)
   selectedDocument: AcademicDocument | null = null;
   newCommentText = '';
   replyingCommentId: string | null = null;
@@ -178,376 +179,187 @@ export class Dashboard implements OnInit {
   isUploadModalOpen = false;
   uploadTitle = '';
   uploadSubject = 'Programación Web';
-  uploadUnit = 'Unidad 1: Arquitectura Web y Protocolos HTTP';
+  uploadSubjectId: number | null = null;
+  uploadSemester = 1;
+  uploadParcial: number | null = 1;
   uploadCategory: 'Guías' | 'Apuntes' | 'Prácticas' | 'Proyectos' = 'Guías';
+  uploadCarpetaId: number | null = null;
   uploadDescription = '';
   uploadFileName = '';
   uploadFileSize = '';
   uploadFormError = '';
 
-  // Base de datos simulada: Documentos académicos con comentarios permanentes
-  documents: AcademicDocument[] = [
-    {
-      id: 'doc-1',
-      name: 'Introducción a Angular y Componentes Standalone.pdf',
-      subject: 'Programación Web',
-      subjectCode: 'IS-301',
-      type: 'PDF',
-      date: '02 oct. 2026',
-      color: 'pdf',
-      size: '3.4 MB',
-      unit: 'Unidad 1',
-      category: 'Guías',
-      downloads: 48,
-      author: 'Mtro. Carlos Ramírez Peña',
-      description:
-        'Guía técnica institucional sobre arquitectura orientada a componentes, directivas estructurales y servicios en Angular.',
-      comments: [
-        {
-          id: 'c-1',
-          authorName: 'Mtro. Carlos Ramírez Peña',
-          authorInitials: 'CR',
-          authorRole: 'Profesor',
-          authorExpediente: 'DOC-1044',
-          timestamp: '03 oct. 2026, 09:15',
-          content:
-            'Estimados estudiantes: para la práctica de la próxima semana, tomen como referencia fundamental el diagrama de ciclo de vida de la página 8.',
-          likes: 12,
-          userLiked: false,
-          replies: [
-            {
-              id: 'c-1-1',
-              authorName: 'Ana Martínez Delgado',
-              authorInitials: 'AM',
-              authorRole: 'Estudiante',
-              authorExpediente: '298412',
-              timestamp: '03 oct. 2026, 11:40',
-              content:
-                'Profesor, en el caso de standalone components, ¿es necesario importar CommonModule en cada componente o es preferible importar directivas individuales?',
-              likes: 4,
-              userLiked: false,
-            },
-            {
-              id: 'c-1-2',
-              authorName: 'Mtro. Carlos Ramírez Peña',
-              authorInitials: 'CR',
-              authorRole: 'Profesor',
-              authorExpediente: 'DOC-1044',
-              timestamp: '03 oct. 2026, 12:20',
-              content:
-                'Excelente pregunta, Ana. En las versiones modernas de Angular se recomienda importar directivas específicas para optimizar el árbol de dependencias, aunque CommonModule es válido en prototipos.',
-              likes: 7,
-              userLiked: false,
-            },
-          ],
-        },
-        {
-          id: 'c-2',
-          authorName: 'Jorge Luis Morales',
-          authorInitials: 'JM',
-          authorRole: 'Estudiante',
-          authorExpediente: '304118',
-          timestamp: '05 oct. 2026, 16:30',
-          content:
-            '¿Alguien tiene problemas con la versión de Node al compilar? Con Node 22 me arrojó una advertencia de paquetes.',
-          likes: 2,
-          userLiked: false,
-          replies: [
-            {
-              id: 'c-2-1',
-              authorName: 'Ana Martínez Delgado',
-              authorInitials: 'AM',
-              authorRole: 'Estudiante',
-              authorExpediente: '298412',
-              timestamp: '05 oct. 2026, 17:05',
-              content:
-                'Jorge, verifica tener instalada la versión LTS 20 o 22.2 activa; con esa compila sin incompatibilidad.',
-              likes: 3,
-              userLiked: false,
-            },
-          ],
-        },
-      ],
-    },
-    {
-      id: 'doc-2',
-      name: 'Modelado Relacional y Formas Normales.pptx',
-      subject: 'Base de Datos',
-      subjectCode: 'IS-302',
-      type: 'PPTX',
-      date: '10 oct. 2026',
-      color: 'ppt',
-      size: '5.8 MB',
-      unit: 'Unidad 1',
-      category: 'Apuntes',
-      downloads: 54,
-      author: 'Dra. Laura Méndez García',
-      description:
-        'Presentación oficial sobre normalización relacional: dependencias funcionales, 1FN, 2FN, 3FN y Boyce-Codd.',
-      comments: [
-        {
-          id: 'c-3',
-          authorName: 'Ana Martínez Delgado',
-          authorInitials: 'AM',
-          authorRole: 'Estudiante',
-          authorExpediente: '298412',
-          timestamp: '11 oct. 2026, 10:10',
-          content:
-            'Los ejemplos de la diapositiva 14 sobre dependencias transitivas clarifican muy bien el paso de 2FN a 3FN.',
-          likes: 6,
-          userLiked: false,
-        },
-      ],
-    },
-    {
-      id: 'doc-3',
-      name: 'Ejercicios de Heurísticas de Usabilidad.docx',
-      subject: 'Diseño de Interfaces',
-      subjectCode: 'IS-303',
-      type: 'DOCX',
-      date: '05 oct. 2026',
-      color: 'doc',
-      size: '1.2 MB',
-      unit: 'Unidad 1',
-      category: 'Prácticas',
-      downloads: 39,
-      author: 'Mtro. Diego Torres Morales',
-      description:
-        'Rúbrica y formato formal de evaluación heurística para sistemas de información universitaria según lineamientos UAQ.',
-      comments: [
-        {
-          id: 'c-4',
-          authorName: 'Mtro. Diego Torres Morales',
-          authorInitials: 'DT',
-          authorRole: 'Profesor',
-          authorExpediente: 'DOC-0994',
-          timestamp: '06 oct. 2026, 08:30',
-          content:
-            'Recuerden que la entrega debe justificar cada hallazgo con una propuesta de rediseño basada en la paleta institucional.',
-          likes: 8,
-          userLiked: false,
-        },
-      ],
-    },
-    {
-      id: 'doc-4',
-      name: 'Guía de Estudio - Examen Parcial 2.pdf',
-      subject: 'Estructuras de Datos',
-      subjectCode: 'IS-304',
-      type: 'PDF',
-      date: '12 oct. 2026',
-      color: 'pdf',
-      size: '2.7 MB',
-      unit: 'Unidad 2',
-      category: 'Guías',
-      downloads: 75,
-      author: 'Mtra. Andrea López Silva',
-      description:
-        'Temario y ejercicios resueltos de balanceo de árboles AVL, recorridos DFS/BFS y matrices de adyacencia.',
-      comments: [
-        {
-          id: 'c-5',
-          authorName: 'Valeria Gómez Peña',
-          authorInitials: 'VG',
-          authorRole: 'Estudiante',
-          authorExpediente: '302488',
-          timestamp: '13 oct. 2026, 14:15',
-          content:
-            'El ejercicio 4 de rotación doble a la derecha ayudó bastante a entender el factor de equilibrio.',
-          likes: 5,
-          userLiked: false,
-        },
-      ],
-    },
-  ];
+  // Gestor de carpetas del docente
+  teacherCarpetas: CarpetaItem[] = [];
+  nuevaCarpetaNombre = '';
+  selectedDocenteMateriaId: number | null = null;
 
-  // Base de datos simulada: Materias
-  subjects: Subject[] = [
-    {
-      name: 'Programación Web',
-      code: 'IS-301',
-      teacher: 'Mtro. Carlos Ramírez Peña',
-      progress: 70,
-      semester: 3,
-      units: [
-        {
-          name: 'Unidad 1: Arquitectura Web y Componentes',
-          description:
-            'Fundamentos de cliente-servidor, componentes standalone y TypeScript.',
-          materialIds: ['doc-1'],
-        },
-      ],
-    },
-    {
-      name: 'Base de Datos',
-      code: 'IS-302',
-      teacher: 'Dra. Laura Méndez García',
-      progress: 40,
-      semester: 3,
-      units: [
-        {
-          name: 'Unidad 1: Modelo Relacional y Normalización',
-          description:
-            'Diseño conceptual y lógico, dependencias funcionales y 3FN.',
-          materialIds: ['doc-2'],
-        },
-      ],
-    },
-    {
-      name: 'Diseño de Interfaces',
-      code: 'IS-303',
-      teacher: 'Mtro. Diego Torres Morales',
-      progress: 85,
-      semester: 3,
-      units: [
-        {
-          name: 'Unidad 1: Principios de UX y Sistemas de Diseño',
-          description:
-            'Heurísticas de usabilidad y manual de identidad visual UAQ.',
-          materialIds: ['doc-3'],
-        },
-      ],
-    },
-    {
-      name: 'Estructuras de Datos',
-      code: 'IS-304',
-      teacher: 'Mtra. Andrea López Silva',
-      progress: 85,
-      semester: 3,
-      units: [
-        {
-          name: 'Unidad 2: Árboles y Grafos',
-          description:
-            'Estructuras no lineales, árboles balanceados y recorridos.',
-          materialIds: ['doc-4'],
-        },
-      ],
-    },
-  ];
-
-  // Usuarios institucionales para el Panel Administrador
-  institutionalUsers: InstitutionalUser[] = [
-    {
-      id: 'usr-1',
-      name: 'Ana Martínez Delgado',
-      email: 'ana.martinez@alumnos.uaq.mx',
-      role: 'Estudiante',
-      status: 'Activo',
-      expediente: '298412',
-      registrationDate: '12 ago. 2023',
-    },
-    {
-      id: 'usr-2',
-      name: 'Mtro. Carlos Ramírez Peña',
-      email: 'carlos.ramirez@uaq.mx',
-      role: 'Profesor',
-      status: 'Activo',
-      expediente: 'DOC-1044',
-      registrationDate: '01 feb. 2021',
-    },
-    {
-      id: 'usr-3',
-      name: 'Dra. Laura Méndez García',
-      email: 'laura.mendez@uaq.mx',
-      role: 'Profesor',
-      status: 'Activo',
-      expediente: 'DOC-0982',
-      registrationDate: '15 ago. 2019',
-    },
-    {
-      id: 'usr-4',
-      name: 'Lic. Fernando Morales Aguilar',
-      email: 'fernando.morales@uaq.mx',
-      role: 'Administrador',
-      status: 'Activo',
-      expediente: 'ADM-0042',
-      registrationDate: '10 ene. 2018',
-    },
-    {
-      id: 'usr-5',
-      name: 'Rodrigo Salinas Pérez',
-      email: 'rsalinas@alumnos.uaq.mx',
-      role: 'Estudiante',
-      status: 'Inactivo',
-      expediente: '304910',
-      registrationDate: '18 feb. 2024',
-    },
-  ];
-
-  // Métricas del Panel Administrador
-  adminMetrics = {
-    totalUsers: '1,240',
-    activeStudents: '1,118',
-    activeTeachers: '94',
-    totalDocuments: '450',
-    storageUsed: '12.4 GB',
-    storageMax: '100 GB',
+  // Panel Administrador: Tabs y datos
+  adminTab: 'materias' | 'usuarios' | 'reportes' | 'auditoria' = 'materias';
+  adminUsuarios: AdminUsuario[] = [];
+  adminReportes: AdminReporte[] = [];
+  adminAuditoria: AdminAuditoriaLog[] = [];
+  adminSubjectSearch = '';
+  adminUserSearch = '';
+  adminNewMateria = {
+    clave: '',
+    nombre: '',
+    descripcion: '',
+    creditos: 8,
+    area_id: 1,
+    carrera_id: 1,
+    semestre: 1,
+  };
+  adminAssignTeacher = {
+    materia_id: 0,
+    profesor_id: 0,
   };
 
-  // Avisos institucionales
-  notices = [
-    {
-      title: 'Periodo oficial de evaluaciones parciales — Semestre 2026-2',
-      description:
-        'Revisa el calendario de exámenes publicado por la Secretaría Académica de la Facultad de Informática.',
-      date: '24 oct. 2026',
-    },
-    {
-      title: 'Mantenimiento del Repositorio Académico',
-      description:
-        'Sincronización de acervos digitales programada para el fin de semana.',
-      date: 'Dirección FIF',
-    },
-  ];
+  // Base de datos de documentos académicos
+  documents: AcademicDocument[] = [];
+
+  // Catálogo de materias para la vista
+  subjects: Subject[] = [];
 
   ngOnInit(): void {
     const authUser = this.authService.getUser();
     if (authUser) {
       this.currentUser = authUser;
-      this.currentRole = authUser.role;
     }
+
+    this.cargarCarreras();
+    this.cargarCatalogoMaterias();
     this.cargarArchivosDesdeServidor();
+
+    if (this.currentRoleNormalized === 'ESTUDIANTE') {
+      this.cargarGuardados();
+      this.cargarNotificaciones();
+    } else if (this.currentRoleNormalized === 'ADMINISTRADOR') {
+      this.cargarDatosAdmin();
+    }
+  }
+
+  cargarCarreras(): void {
+    this.catalogService.getCarreras().subscribe({
+      next: (res) => {
+        if (res && res.data) {
+          this.carrerasList = res.data;
+        }
+      },
+      error: () => {},
+    });
+  }
+
+  cargarCatalogoMaterias(): void {
+    const carreraClave =
+      this.currentRoleNormalized === 'ESTUDIANTE' && this.currentUser.carreraClave
+        ? this.currentUser.carreraClave
+        : undefined;
+
+    this.catalogService.getMaterias({ carreraClave }).subscribe({
+      next: (res) => {
+        if (res && res.data && res.data.length > 0) {
+          this.catalogMaterias = res.data;
+          this.subjects = res.data.map((m) => {
+            const docente = m.materias_profesores?.[0]?.profesor;
+            const docenteNombre = docente
+              ? `${docente.nombre} ${docente.apellidos}`.trim()
+              : 'Coordinación Académica UAQ';
+            const sem = m.materias_carreras?.[0]?.semestre || 1;
+            return {
+              id: m.id,
+              name: m.nombre,
+              code: m.clave,
+              teacher: docenteNombre,
+              progress: 60,
+              semester: sem,
+              areaNombre: m.area?.nombre,
+              units: [
+                {
+                  name: 'Materiales Generales del Curso',
+                  description: m.descripcion || `Recursos oficiales de ${m.nombre}`,
+                  materialIds: [],
+                },
+              ],
+            };
+          });
+
+          // Seleccionar primera materia para el panel docente
+          if (this.subjects.length > 0 && !this.selectedDocenteMateriaId) {
+            this.selectedDocenteMateriaId = this.subjects[0].id || null;
+            if (this.selectedDocenteMateriaId) {
+              this.cargarCarpetas(this.selectedDocenteMateriaId);
+            }
+          }
+        }
+      },
+      error: (err) => {
+        console.warn('Catálogo de materias no disponible:', err);
+      },
+    });
   }
 
   cargarArchivosDesdeServidor(): void {
     this.isLoadingFiles = true;
-    this.fileService.getFiles().subscribe({
+    const userId = this.currentUser.id;
+
+    this.fileService.getFiles({ userId }).subscribe({
       next: (archivos) => {
         this.isLoadingFiles = false;
-        if (archivos && archivos.length > 0) {
+        if (archivos) {
           this.documents = archivos;
         }
       },
       error: (err) => {
         this.isLoadingFiles = false;
-        console.warn('Backend API no disponible; utilizando catálogo de respaldo:', err);
+        console.warn('Backend API no disponible para archivos:', err);
       },
     });
   }
 
-  // Cambio de Rol para Simulación en UI
-  switchRole(role: UserRole): void {
-    this.currentRole = role;
-    this.currentUser = this.profiles[role];
-    this.authService.setUser(this.currentUser);
+  cargarGuardados(): void {
+    if (!this.currentUser.id) return;
+    this.isLoadingBookmarks = true;
+    this.fileService.getBookmarks(this.currentUser.id).subscribe({
+      next: (guardados) => {
+        this.isLoadingBookmarks = false;
+        this.bookmarkedDocuments = guardados;
+      },
+      error: () => {
+        this.isLoadingBookmarks = false;
+      },
+    });
+  }
 
-    // Restricción: Si un estudiante está en paneles administrativos, retornar a Inicio
-    if (this.currentRole === 'Estudiante') {
-      if (
-        this.activeView === 'Panel Docente' ||
-        this.activeView === 'Panel Administrador'
-      ) {
-        this.activeView = 'Inicio';
-      }
-    } else if (this.currentRole === 'Profesor') {
-      if (this.activeView === 'Panel Administrador') {
-        this.activeView = 'Inicio';
-      }
-    }
+  cargarNotificaciones(): void {
+    if (!this.currentUser.id) return;
+    this.commentService.getNotifications(this.currentUser.id).subscribe({
+      next: (notifs) => {
+        this.studentNotifications = notifs || [];
+      },
+      error: () => {},
+    });
+  }
 
-    this.showFeedback(
-      `Perfil cambiado a: ${this.currentUser.role} (${this.currentUser.name})`
-    );
+  toggleBookmark(doc: AcademicDocument): void {
+    this.fileService.toggleBookmark(doc.id, this.currentUser.id).subscribe({
+      next: (res) => {
+        doc.isBookmarked = res.saved;
+        this.showFeedback(res.message);
+        this.cargarGuardados();
+      },
+      error: () => {
+        doc.isBookmarked = !doc.isBookmarked;
+        this.showFeedback(
+          doc.isBookmarked ? 'Material guardado.' : 'Material retirado de guardados.'
+        );
+      },
+    });
+  }
+
+  getSafePreviewUrl(docId: string): SafeResourceUrl {
+    const rawUrl = this.fileService.getPreviewUrl(docId);
+    return this.sanitizer.bypassSecurityTrustResourceUrl(rawUrl);
   }
 
   // Navegación
@@ -556,6 +368,12 @@ export class Dashboard implements OnInit {
     this.activeView = view;
     this.selectedSubject = null;
     window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    if (view === 'Mis Guardados') {
+      this.cargarGuardados();
+    } else if (view === 'Panel Administrador') {
+      this.cargarDatosAdmin();
+    }
   }
 
   logoutRequested(): void {
@@ -627,7 +445,6 @@ export class Dashboard implements OnInit {
     });
   }
 
-  // Documentos recientes del Inicio
   get recentDocuments(): AcademicDocument[] {
     const term = this.searchTerm.trim().toLowerCase();
     return this.documents.filter(
@@ -662,17 +479,17 @@ export class Dashboard implements OnInit {
     this.editingCommentId = null;
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
-    // Cargar comentarios en tiempo real desde PostgreSQL si el archivo está en la BD
+    // Cargar comentarios en tiempo real desde PostgreSQL
     const numId = parseInt(doc.id, 10);
     if (!isNaN(numId)) {
-      this.commentService.getComments(doc.id).subscribe({
+      this.commentService.getComments(doc.id, this.currentUser.id?.toString()).subscribe({
         next: (comentarios) => {
           if (comentarios && comentarios.length > 0) {
             doc.comments = comentarios;
           }
         },
         error: (err) => {
-          console.warn('Comentarios del backend no disponibles, manteniendo locales:', err);
+          console.warn('Comentarios no disponibles:', err);
         },
       });
     }
@@ -691,70 +508,32 @@ export class Dashboard implements OnInit {
     this.fileService.triggerDownload(doc.id, doc.name);
   }
 
-  // Publicar comentario en el documento
   submitNewComment(): void {
     if (!this.selectedDocument || !this.newCommentText.trim()) return;
     const texto = this.newCommentText.trim();
     const docActual = this.selectedDocument;
 
-    const numDocId = parseInt(docActual.id, 10);
-    if (!isNaN(numDocId)) {
-      this.commentService
-        .addComment(docActual.id, {
-          content: texto,
-          authorName: this.currentUser.name,
-          authorRole: this.currentUser.role,
-          authorExpediente: this.currentUser.expediente,
-        })
-        .subscribe({
-          next: (nuevo) => {
-            docActual.comments.unshift(nuevo);
-            this.newCommentText = '';
-            this.showFeedback('Tu comentario ha sido publicado y guardado en PostgreSQL.');
-          },
-          error: (err) => {
-            console.error('Error al guardar comentario en backend:', err);
-            // Fallback en memoria
-            const newComment: DocumentComment = {
-              id: `c-${Date.now()}`,
-              authorName: this.currentUser.name,
-              authorInitials: this.currentUser.initials,
-              authorRole: this.currentUser.role,
-              authorExpediente: this.currentUser.expediente,
-              timestamp: 'Justo ahora',
-              content: texto,
-              likes: 0,
-              userLiked: false,
-              replies: [],
-            };
-            docActual.comments.unshift(newComment);
-            this.newCommentText = '';
-            this.showFeedback('Tu comentario ha sido publicado en el documento.');
-          },
-        });
-      return;
-    }
-
-    // Archivo de prueba local
-    const newComment: DocumentComment = {
-      id: `c-${Date.now()}`,
-      authorName: this.currentUser.name,
-      authorInitials: this.currentUser.initials,
-      authorRole: this.currentUser.role,
-      authorExpediente: this.currentUser.expediente,
-      timestamp: 'Justo ahora',
-      content: texto,
-      likes: 0,
-      userLiked: false,
-      replies: [],
-    };
-
-    docActual.comments.unshift(newComment);
-    this.newCommentText = '';
-    this.showFeedback('Tu comentario ha sido publicado en el documento.');
+    this.commentService
+      .addComment(docActual.id, {
+        content: texto,
+        authorId: this.currentUser.id,
+        authorName: this.currentUser.name,
+        authorRole: this.currentUser.role,
+        authorExpediente: this.currentUser.expediente,
+      })
+      .subscribe({
+        next: (nuevo) => {
+          docActual.comments.unshift(nuevo);
+          this.newCommentText = '';
+          this.showFeedback('Tu comentario ha sido publicado en el documento.');
+        },
+        error: (err) => {
+          console.error('Error al guardar comentario:', err);
+          this.showFeedback('No fue posible publicar el comentario en este momento.');
+        },
+      });
   }
 
-  // Respuestas en hilos organizados
   startReply(commentId: string): void {
     this.replyingCommentId = commentId;
     this.replyText = '';
@@ -772,151 +551,95 @@ export class Dashboard implements OnInit {
     const docActual = this.selectedDocument;
     const parentIdNum = parseInt(parentComment.id, 10);
 
-    if (!isNaN(parentIdNum)) {
-      this.commentService
-        .addComment(docActual.id, {
-          content: texto,
-          parentId: parentIdNum,
-          authorName: this.currentUser.name,
-          authorRole: this.currentUser.role,
-          authorExpediente: this.currentUser.expediente,
-        })
-        .subscribe({
-          next: (reply) => {
-            if (!parentComment.replies) parentComment.replies = [];
-            parentComment.replies.push(reply);
-            this.replyingCommentId = null;
-            this.replyText = '';
-            this.showFeedback('Respuesta agregada al hilo de conversación en PostgreSQL.');
-          },
-          error: (err) => {
-            console.error('Error al responder en backend:', err);
-            if (!parentComment.replies) parentComment.replies = [];
-            const reply: DocumentComment = {
-              id: `rep-${Date.now()}`,
-              authorName: this.currentUser.name,
-              authorInitials: this.currentUser.initials,
-              authorRole: this.currentUser.role,
-              authorExpediente: this.currentUser.expediente,
-              timestamp: 'Justo ahora',
-              content: texto,
-              likes: 0,
-              userLiked: false,
-            };
-            parentComment.replies.push(reply);
-            this.replyingCommentId = null;
-            this.replyText = '';
-            this.showFeedback('Respuesta agregada al hilo de conversación.');
-          },
-        });
+    this.commentService
+      .addComment(docActual.id, {
+        content: texto,
+        parentId: !isNaN(parentIdNum) ? parentIdNum : undefined,
+        authorId: this.currentUser.id,
+        authorName: this.currentUser.name,
+        authorRole: this.currentUser.role,
+        authorExpediente: this.currentUser.expediente,
+      })
+      .subscribe({
+        next: (reply) => {
+          if (!parentComment.replies) parentComment.replies = [];
+          parentComment.replies.push(reply);
+          this.cancelReply();
+          this.showFeedback('Respuesta agregada al hilo de discusión.');
+        },
+        error: (err) => {
+          console.error('Error al guardar respuesta:', err);
+          this.showFeedback('No fue posible registrar tu respuesta.');
+        },
+      });
+  }
+
+  toggleCommentLike(comment: DocumentComment): void {
+    const numId = parseInt(comment.id, 10);
+    if (!isNaN(numId)) {
+      this.commentService.toggleLike(comment.id, this.currentUser.id).subscribe({
+        next: (res) => {
+          comment.likes = res.likes;
+          comment.userLiked = res.userLiked;
+        },
+        error: () => {
+          comment.userLiked = !comment.userLiked;
+          comment.likes += comment.userLiked ? 1 : -1;
+        },
+      });
       return;
     }
-
-    // Local fallback
-    if (!parentComment.replies) {
-      parentComment.replies = [];
-    }
-    const reply: DocumentComment = {
-      id: `rep-${Date.now()}`,
-      authorName: this.currentUser.name,
-      authorInitials: this.currentUser.initials,
-      authorRole: this.currentUser.role,
-      authorExpediente: this.currentUser.expediente,
-      timestamp: 'Justo ahora',
-      content: texto,
-      likes: 0,
-      userLiked: false,
-    };
-
-    parentComment.replies.push(reply);
-    this.replyingCommentId = null;
-    this.replyText = '';
-    this.showFeedback('Respuesta agregada al hilo de conversación.');
+    comment.userLiked = !comment.userLiked;
+    comment.likes += comment.userLiked ? 1 : -1;
   }
 
-  // Interacción «Me gusta»
-  toggleLike(item: DocumentComment): void {
-    item.userLiked = !item.userLiked;
-    item.likes += item.userLiked ? 1 : -1;
-
-    const numId = parseInt(item.id, 10);
-    if (!isNaN(numId)) {
-      this.commentService.toggleLike(item.id).subscribe({
-        next: (res) => {
-          item.likes = res.likes;
-          item.userLiked = res.userLiked;
-        },
-        error: (err) => console.warn('Error al alternar like en backend:', err),
-      });
-    }
-  }
-
-  // Edición de comentarios propios
-  startEdit(comment: DocumentComment): void {
+  startEditComment(comment: DocumentComment): void {
     this.editingCommentId = comment.id;
     this.editCommentText = comment.content;
     this.replyingCommentId = null;
   }
 
-  cancelEdit(): void {
+  cancelEditComment(): void {
     this.editingCommentId = null;
     this.editCommentText = '';
   }
 
-  saveEdit(comment: DocumentComment): void {
+  saveEditComment(comment: DocumentComment): void {
     if (!this.editCommentText.trim()) return;
     const nuevoTexto = this.editCommentText.trim();
-    comment.content = nuevoTexto;
-    comment.isEdited = true;
-    this.editingCommentId = null;
-    this.editCommentText = '';
 
-    const numId = parseInt(comment.id, 10);
-    if (!isNaN(numId)) {
-      this.commentService.editComment(comment.id, nuevoTexto).subscribe({
-        next: () => this.showFeedback('Comentario actualizado en PostgreSQL.'),
-        error: () => this.showFeedback('Comentario actualizado.'),
-      });
-    } else {
-      this.showFeedback('Comentario actualizado.');
-    }
+    this.commentService.editComment(comment.id, nuevoTexto).subscribe({
+      next: (res) => {
+        comment.content = res.content;
+        comment.isEdited = true;
+        this.cancelEditComment();
+        this.showFeedback('Comentario editado con éxito.');
+      },
+      error: () => {
+        comment.content = nuevoTexto;
+        comment.isEdited = true;
+        this.cancelEditComment();
+      },
+    });
   }
 
-  // Eliminación de comentarios propios
   deleteComment(comment: DocumentComment, parentComment?: DocumentComment): void {
-    if (!this.selectedDocument) return;
+    if (!confirm('¿Deseas eliminar este comentario?')) return;
 
-    const numId = parseInt(comment.id, 10);
-    if (!isNaN(numId)) {
-      this.commentService.deleteComment(comment.id).subscribe({
-        error: (err) => console.warn('Error al eliminar en backend:', err),
-      });
-    }
-
-    if (parentComment && parentComment.replies) {
-      const idx = parentComment.replies.indexOf(comment);
-      if (idx > -1) {
-        parentComment.replies.splice(idx, 1);
-        this.showFeedback('Respuesta eliminada.');
-        return;
-      }
-    }
-
-    // Si tiene respuestas, conservar el contexto visualmente
-    if (comment.replies && comment.replies.length > 0) {
-      comment.isDeleted = true;
-      comment.content = 'Este comentario ha sido retirado por su autor.';
-      this.showFeedback('Comentario eliminado (respuestas preservadas).');
-    } else {
-      const idx = this.selectedDocument.comments.indexOf(comment);
-      if (idx > -1) {
-        this.selectedDocument.comments.splice(idx, 1);
+    this.commentService.deleteComment(comment.id).subscribe({
+      next: () => {
+        comment.isDeleted = true;
+        comment.content = '[Comentario eliminado por el autor]';
         this.showFeedback('Comentario eliminado.');
-      }
-    }
+      },
+      error: () => {
+        comment.isDeleted = true;
+        comment.content = '[Comentario eliminado por el autor]';
+        this.showFeedback('Comentario eliminado.');
+      },
+    });
   }
 
-  // Moderación y Reporte
   openReportModal(comment: DocumentComment): void {
     this.reportingComment = comment;
     this.selectedReportReason = 'Contenido fuera de contexto académico';
@@ -926,77 +649,89 @@ export class Dashboard implements OnInit {
     this.reportingComment = null;
   }
 
-  confirmReport(): void {
-    if (this.reportingComment) {
-      this.reportingComment.isReported = true;
-      this.reportingComment.reportReason = this.selectedReportReason;
+  submitReport(): void {
+    if (!this.reportingComment) return;
+    const comment = this.reportingComment;
+    const reason = this.selectedReportReason;
 
-      const numId = parseInt(this.reportingComment.id, 10);
-      if (!isNaN(numId)) {
-        this.commentService
-          .reportComment(
-            this.reportingComment.id,
-            this.selectedReportReason,
-            undefined,
-            this.currentUser.name,
-          )
-          .subscribe({
-            next: () => {
-              this.showFeedback(
-                'El comentario ha sido reportado para revisión de la administración y registrado en PostgreSQL.',
-              );
-            },
-            error: () => {
-              this.showFeedback(
-                'El comentario ha sido reportado para revisión de la administración.',
-              );
-            },
-          });
-      } else {
-        this.showFeedback(
-          'El comentario ha sido reportado para revisión de la administración.',
-        );
-      }
-      this.closeReportModal();
-    }
-  }
-
-  // Para el Administrador: Ocultar o descartar comentarios reportados
-  dismissReport(comment: DocumentComment): void {
-    comment.isReported = false;
-    delete comment.reportReason;
-    this.showFeedback('Reporte descartado. El comentario se mantiene visible.');
-  }
-
-  moderateHideComment(comment: DocumentComment): void {
-    comment.content = '[Comentario retirado por la administración por incumplimiento normativo]';
-    comment.isDeleted = true;
-    comment.isReported = false;
-    this.showFeedback('El comentario ha sido moderado y retirado.');
-  }
-
-  // Documentos reportados en total (para vista admin)
-  get reportedCommentsList(): { docName: string; comment: DocumentComment }[] {
-    const list: { docName: string; comment: DocumentComment }[] = [];
-    for (const doc of this.documents) {
-      for (const c of doc.comments) {
-        if (c.isReported) {
-          list.push({ docName: doc.name, comment: c });
-        }
-        if (c.replies) {
-          for (const rep of c.replies) {
-            if (rep.isReported) {
-              list.push({ docName: doc.name, comment: rep });
-            }
-          }
-        }
-      }
-    }
-    return list;
+    this.commentService
+      .reportComment(comment.id, reason, this.currentUser.id, this.currentUser.name)
+      .subscribe({
+        next: () => {
+          comment.isReported = true;
+          this.closeReportModal();
+          this.showFeedback(
+            'Comentario remitido a la moderación de la Facultad de Informática.'
+          );
+        },
+        error: () => {
+          comment.isReported = true;
+          this.closeReportModal();
+          this.showFeedback('Reporte registrado.');
+        },
+      });
   }
 
   // ==========================================================
-  // GESTIÓN DE MATERIALES (PROFESOR Y ADMINISTRADOR)
+  // PANEL DOCENTE Y GESTOR DE CARPETAS
+  // ==========================================================
+
+  cargarCarpetas(materiaId: number): void {
+    this.folderService.getCarpetasMateria(materiaId).subscribe({
+      next: (res) => {
+        if (res && res.data) {
+          this.teacherCarpetas = res.data;
+        }
+      },
+      error: () => {
+        this.teacherCarpetas = [];
+      },
+    });
+  }
+
+  onDocenteMateriaChange(materiaId: number): void {
+    this.selectedDocenteMateriaId = materiaId;
+    this.cargarCarpetas(materiaId);
+  }
+
+  crearCarpeta(): void {
+    if (!this.nuevaCarpetaNombre.trim() || !this.selectedDocenteMateriaId) {
+      this.showFeedback('Escribe un nombre para la carpeta.');
+      return;
+    }
+
+    this.folderService
+      .crearCarpeta({
+        nombre: this.nuevaCarpetaNombre.trim(),
+        materia_id: this.selectedDocenteMateriaId,
+      })
+      .subscribe({
+        next: (res) => {
+          this.teacherCarpetas.push(res.data);
+          this.nuevaCarpetaNombre = '';
+          this.showFeedback('Carpeta creada con éxito.');
+        },
+        error: (err) => {
+          this.showFeedback(err.error?.message || 'Error al crear carpeta.');
+        },
+      });
+  }
+
+  eliminarCarpeta(carpetaId: number): void {
+    if (!confirm('¿Seguro de eliminar esta carpeta?')) return;
+    this.folderService.eliminarCarpeta(carpetaId).subscribe({
+      next: () => {
+        this.teacherCarpetas = this.teacherCarpetas.filter((c) => c.id !== carpetaId);
+        this.showFeedback('Carpeta eliminada.');
+      },
+      error: (err) => {
+        this.showFeedback(err.error?.message || 'No se pudo eliminar la carpeta.');
+      },
+    });
+  }
+
+  // ==========================================================
+  // SUBIDA Y EDICIÓN DE ARCHIVOS
   // ==========================================================
 
   openUploadModal(): void {
@@ -1006,8 +741,16 @@ export class Dashboard implements OnInit {
     this.uploadDescription = '';
     this.uploadFileName = '';
     this.uploadFileSize = '';
+    this.uploadParcial = 1;
+    this.uploadCategory = 'Guías';
     this.selectedUploadFile = null;
     this.isUploading = false;
+
+    if (this.subjects.length > 0) {
+      this.uploadSubject = this.subjects[0].name;
+      this.uploadSubjectId = this.subjects[0].id || null;
+      this.uploadSemester = this.subjects[0].semester;
+    }
   }
 
   closeUploadModal(): void {
@@ -1037,116 +780,196 @@ export class Dashboard implements OnInit {
       return;
     }
 
-    if (!this.selectedUploadFile && !this.uploadFileName) {
-      this.uploadFormError = 'Selecciona un archivo PDF, PPTX, DOCX o ZIP.';
+    if (!this.selectedUploadFile) {
+      this.uploadFormError = 'Selecciona un archivo PDF institucional (máx. 25 MB).';
       return;
     }
 
-    // Si tenemos el archivo físico seleccionado, lo subimos a NestJS + PostgreSQL
-    if (this.selectedUploadFile) {
-      this.isUploading = true;
-      this.uploadFormError = '';
+    this.isUploading = true;
+    this.uploadFormError = '';
 
-      const carreraClave = this.currentUser.carreraOrDept.includes('INF')
-        ? 'INF18'
-        : this.currentUser.carreraOrDept.includes('SOF')
-        ? 'SOF18'
-        : 'ITIC22';
+    const carreraClave = this.currentUser.carreraClave || 'INF18';
 
-      const semestreNum =
-        parseInt(this.currentUser.semestreOrCargo.replace(/[^0-9]/g, ''), 10) || 3;
-
-      this.fileService
-        .uploadFile(this.selectedUploadFile, {
-          titulo: this.uploadTitle.trim(),
-          descripcion: this.uploadDescription.trim(),
-          carreraId: carreraClave,
-          materia: this.uploadSubject,
-          semestre: semestreNum,
-          categoria: this.uploadCategory,
-          autorNombre: this.currentUser.name,
-          autorRol: this.currentUser.role,
-        })
-        .subscribe({
-          next: (docCreado) => {
-            this.isUploading = false;
-            this.documents.unshift(docCreado);
-            this.closeUploadModal();
-            this.showFeedback(
-              `El documento "${docCreado.name}" ha sido incorporado al repositorio y guardado en PostgreSQL.`
-            );
-          },
-          error: (err) => {
-            this.isUploading = false;
-            console.error('Error al subir archivo al backend:', err);
-            this.uploadFormError =
-              'Error al subir el archivo al servidor. Asegúrate de que sea un PDF válido (máx. 25 MB).';
-          },
-        });
-      return;
-    }
-
-    // Respaldo visual si no hay archivo físico
-    const ext = this.uploadFileName.split('.').pop()?.toUpperCase() ?? 'PDF';
-    const docType: 'PDF' | 'PPTX' | 'DOCX' | 'ZIP' =
-      ext === 'PPTX'
-        ? 'PPTX'
-        : ext === 'DOCX'
-        ? 'DOCX'
-        : ext === 'ZIP'
-        ? 'ZIP'
-        : 'PDF';
-
-    const newDoc: AcademicDocument = {
-      id: `doc-${Date.now()}`,
-      name: `${this.uploadTitle.trim()}.${ext.toLowerCase()}`,
-      subject: this.uploadSubject,
-      subjectCode: 'IS-301',
-      type: docType,
-      date: '26 oct. 2026',
-      color: docType.toLowerCase(),
-      size: this.uploadFileSize || '1.8 MB',
-      unit: this.uploadUnit,
-      category: this.uploadCategory,
-      downloads: 0,
-      author: this.currentUser.name,
-      description:
-        this.uploadDescription.trim() ||
-        'Material académico oficial publicado en INFOUAQ.',
-      comments: [],
-    };
-
-    this.documents.unshift(newDoc);
-    this.closeUploadModal();
-    this.showFeedback(
-      `El documento "${newDoc.name}" ha sido incorporado al repositorio.`
-    );
+    this.fileService
+      .uploadFile(this.selectedUploadFile, {
+        titulo: this.uploadTitle.trim(),
+        descripcion: this.uploadDescription.trim(),
+        carreraId: carreraClave,
+        materia: this.uploadSubject,
+        materia_id: this.uploadSubjectId || undefined,
+        semestre: this.uploadSemester,
+        categoria: this.uploadCategory,
+        parcial: this.uploadParcial || undefined,
+        carpeta_id: this.uploadCarpetaId || undefined,
+        autorNombre: this.currentUser.name,
+        autorRol: this.currentUser.role,
+      })
+      .subscribe({
+        next: (docCreado) => {
+          this.isUploading = false;
+          this.documents.unshift(docCreado);
+          this.closeUploadModal();
+          this.showFeedback(
+            `El documento "${docCreado.name}" ha sido incorporado al repositorio y guardado en PostgreSQL.`
+          );
+        },
+        error: (err) => {
+          this.isUploading = false;
+          console.error('Error al subir archivo:', err);
+          this.uploadFormError =
+            err.error?.message ||
+            'Error al subir el archivo al servidor. Asegúrate de ser Profesor o Administrador y usar formato PDF.';
+        },
+      });
   }
 
   deleteDocumentFromRepo(doc: AcademicDocument): void {
+    if (!confirm(`¿Deseas retirar "${doc.name}" del repositorio institucional?`)) return;
+
     this.fileService.deleteFile(doc.id).subscribe({
       next: () => {
-        const idx = this.documents.indexOf(doc);
-        if (idx > -1) {
-          this.documents.splice(idx, 1);
-        }
+        this.documents = this.documents.filter((d) => d.id !== doc.id);
         this.showFeedback(`Se retiró "${doc.name}" del repositorio y de la base de datos.`);
       },
-      error: () => {
-        const idx = this.documents.indexOf(doc);
-        if (idx > -1) {
-          this.documents.splice(idx, 1);
-        }
-        this.showFeedback(`Se retiró "${doc.name}" del repositorio.`);
+      error: (err) => {
+        this.showFeedback(err.error?.message || 'Error al eliminar el archivo.');
       },
     });
   }
 
-  toggleUserStatus(user: InstitutionalUser): void {
-    user.status = user.status === 'Activo' ? 'Inactivo' : 'Activo';
-    this.showFeedback(
-      `Estado de ${user.name} actualizado a: ${user.status}.`
-    );
+  // ==========================================================
+  // PANEL ADMINISTRADOR (CATÁLOGO, USUARIOS, REPORTES, AUDITORÍA)
+  // ==========================================================
+
+  cargarDatosAdmin(): void {
+    this.adminService.listarUsuarios().subscribe({
+      next: (res) => (this.adminUsuarios = res.data || []),
+      error: () => {},
+    });
+    this.adminService.listarReportes().subscribe({
+      next: (res) => (this.adminReportes = res.data || []),
+      error: () => {},
+    });
+    this.adminService.listarAuditoria(50).subscribe({
+      next: (res) => (this.adminAuditoria = res.data || []),
+      error: () => {},
+    });
+  }
+
+  crearMateriaAdmin(): void {
+    if (!this.adminNewMateria.clave.trim() || !this.adminNewMateria.nombre.trim()) {
+      this.showFeedback('Clave y Nombre de la materia son obligatorios.');
+      return;
+    }
+
+    this.adminService
+      .crearMateria({
+        clave: this.adminNewMateria.clave.trim().toUpperCase(),
+        nombre: this.adminNewMateria.nombre.trim(),
+        descripcion: this.adminNewMateria.descripcion.trim(),
+        creditos: this.adminNewMateria.creditos,
+        area_id: Number(this.adminNewMateria.area_id),
+        carreras: [
+          {
+            carrera_id: Number(this.adminNewMateria.carrera_id),
+            semestre: Number(this.adminNewMateria.semestre),
+          },
+        ],
+      })
+      .subscribe({
+        next: (res) => {
+          this.showFeedback('Materia agregada exitosamente al catálogo oficial.');
+          this.cargarCatalogoMaterias();
+          this.adminNewMateria = {
+            clave: '',
+            nombre: '',
+            descripcion: '',
+            creditos: 8,
+            area_id: 1,
+            carrera_id: 1,
+            semestre: 1,
+          };
+        },
+        error: (err) => {
+          this.showFeedback(err.error?.message || 'Error al registrar materia.');
+        },
+      });
+  }
+
+  asignarProfesorMateria(): void {
+    if (!this.adminAssignTeacher.materia_id || !this.adminAssignTeacher.profesor_id) {
+      this.showFeedback('Selecciona una materia y un profesor.');
+      return;
+    }
+
+    this.adminService
+      .asignarProfesor(
+        Number(this.adminAssignTeacher.materia_id),
+        Number(this.adminAssignTeacher.profesor_id),
+      )
+      .subscribe({
+        next: () => {
+          this.showFeedback('Profesor asignado a la materia con éxito.');
+          this.cargarCatalogoMaterias();
+        },
+        error: (err) => {
+          this.showFeedback(err.error?.message || 'Error al asignar profesor.');
+        },
+      });
+  }
+
+  actualizarRolUsuarioAdmin(user: AdminUsuario, rolId: number): void {
+    this.adminService.actualizarRolUsuario(user.id, rolId).subscribe({
+      next: (res) => {
+        user.rolId = rolId;
+        user.rolNombre = res.data?.rolNombre || 'Actualizado';
+        this.showFeedback(`Rol de ${user.nombreCompleto} actualizado a ${user.rolNombre}.`);
+      },
+      error: (err) => {
+        this.showFeedback(err.error?.message || 'Error al cambiar rol.');
+      },
+    });
+  }
+
+  actualizarEstadoUsuarioAdmin(user: AdminUsuario, estado: 'ACTIVA' | 'SUSPENDIDA' | 'INACTIVA'): void {
+    this.adminService.actualizarEstadoUsuario(user.id, estado).subscribe({
+      next: () => {
+        user.estado = estado;
+        this.showFeedback(`Estado de ${user.nombreCompleto} cambiado a ${estado}.`);
+      },
+      error: (err) => {
+        this.showFeedback(err.error?.message || 'Error al cambiar estado.');
+      },
+    });
+  }
+
+  descartarReporteAdmin(reporte: AdminReporte): void {
+    this.adminService.descartarReporte(reporte.id, this.currentUser.id).subscribe({
+      next: () => {
+        reporte.estado = 'DESCARTADO';
+        this.showFeedback('Reporte descartado.');
+      },
+      error: (err) => {
+        this.showFeedback(err.error?.message || 'Error al descartar reporte.');
+      },
+    });
+  }
+
+  eliminarComentarioReportadoAdmin(reporte: AdminReporte): void {
+    if (!confirm('¿Confirmas eliminar este comentario por violar normas comunitarias?')) return;
+
+    this.adminService
+      .eliminarComentarioReportado(reporte.id, this.currentUser.id)
+      .subscribe({
+        next: () => {
+          reporte.estado = 'CONFIRMADO';
+          this.showFeedback('Comentario eliminado y reporte resuelto.');
+          this.cargarArchivosDesdeServidor();
+        },
+        error: (err) => {
+          this.showFeedback(err.error?.message || 'Error al procesar moderación.');
+        },
+      });
   }
 
   showFeedback(message: string): void {
