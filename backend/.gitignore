@@ -9,7 +9,7 @@ yarn-debug.log*
 yarn-error.log*
 
 # Variables de entorno sensibles (usar .env.example para el repo)
-.env
+#.env
 
 # Archivos subidos en desarrollo local
 /uploads/*
