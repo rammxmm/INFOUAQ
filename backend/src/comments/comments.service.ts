@@ -30,22 +30,48 @@ export class CommentsService {
     autorNombre?: string,
     autorRol?: string,
   ): Promise<number> {
-    if (autorId) {
+    if (autorId && typeof autorId === 'number' && autorId < 2000000000) {
       const user = await this.prisma.usuario.findUnique({ where: { id: autorId } });
       if (user) return user.id;
     }
 
     if (autorNombre && autorNombre.trim()) {
-      const primerNombre = autorNombre.trim().split(' ')[0];
+      const trimmed = autorNombre.trim();
+      const parts = trimmed.split(' ');
+      const primerNombre = parts[0];
+
       const user = await this.prisma.usuario.findFirst({
         where: {
           OR: [
             { nombre: { contains: primerNombre, mode: 'insensitive' } },
             { apellidos: { contains: primerNombre, mode: 'insensitive' } },
+            { nombre: { contains: trimmed, mode: 'insensitive' } },
           ],
         },
       });
       if (user) return user.id;
+
+      // Si el estudiante o docente aún no existe en PostgreSQL, lo registramos dinámicamente
+      try {
+        const nombre = parts[0];
+        const apellidos = parts.slice(1).join(' ') || 'UAQ';
+        const rolId = (autorRol?.toLowerCase().includes('profesor') || autorRol?.toLowerCase().includes('docente')) ? 2 : 1;
+        const emailGenerado = `${nombre.toLowerCase()}.${Date.now()}@alumnos.uaq.mx`;
+
+        const nuevo = await this.prisma.usuario.create({
+          data: {
+            nombre,
+            apellidos,
+            correo: emailGenerado,
+            password_hash: '$2a$10$placeholderAuthINFOUAQ',
+            rol_id: rolId,
+            estado: 'ACTIVA',
+          },
+        });
+        return nuevo.id;
+      } catch (err) {
+        this.logger.warn('No se pudo crear usuario automático para comentario:', err);
+      }
     }
 
     // Por rol sugerido
