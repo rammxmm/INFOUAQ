@@ -346,6 +346,10 @@ export class AuthService {
    * Obtiene la información del perfil del usuario autenticado
    */
   async getProfile(userId: number) {
+    if (!userId || typeof userId !== 'number' || isNaN(userId) || userId > 2147483647) {
+      throw new NotFoundException('Usuario no encontrado.');
+    }
+
     const user = await this.prisma.usuario.findUnique({
       where: { id: userId },
       include: { rol: true, carrera: true },
