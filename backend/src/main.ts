@@ -32,7 +32,14 @@ async function bootstrap() {
 
   // Configuración de CORS para comunicar con Angular
   app.enableCors({
-    origin: [corsOrigin, 'http://localhost:4200', 'http://127.0.0.1:4200'],
+    origin: [
+      corsOrigin,
+      'http://localhost:4200',
+      'http://127.0.0.1:4200',
+      'https://infouaq.beer',
+      'http://infouaq.beer',
+      'https://www.infouaq.beer',
+    ],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
     credentials: true,
