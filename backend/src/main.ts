@@ -9,7 +9,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   const configService = app.get(ConfigService);
-  const port = configService.get<number>('PORT', 3000);
+  const port = Number(process.env.PORT) || configService.get<number>('PORT', 3000);
   const corsOrigin = configService.get<string>('CORS_ORIGIN', 'http://localhost:4200');
 
   // Prefijo global para la API REST
@@ -45,7 +45,7 @@ async function bootstrap() {
     credentials: true,
   });
 
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
   logger.log(`====================================================`);
   logger.log(`  INFOUAQ Backend en ejecución: http://localhost:${port}/api`);
   logger.log(`  Health Check: http://localhost:${port}/api/health`);
